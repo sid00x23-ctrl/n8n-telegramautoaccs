@@ -1,0 +1,47 @@
+name: ${CLIENT_ID}
+
+services:
+  n8n:
+    image: botrassilka-n8n:latest
+    restart: unless-stopped
+    ports:
+      - "${N8N_PORT}:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    environment:
+      N8N_PORT: "5678"
+      N8N_HOST: "0.0.0.0"
+      N8N_PROTOCOL: "http"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      N8N_RUNNERS_ENABLED: "false"
+    networks:
+      - internal
+
+  userbot:
+    image: botrassilka-userbot:latest
+    restart: unless-stopped
+    ports:
+      - "${USERBOT_PORT}:8000"
+    env_file: .env
+    volumes:
+      - ./sessions:/app/sessions
+      - ./accounts_config.json:/app/accounts_config.json:ro
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
+
+volumes:
+  n8n_data:
+  redis_data:
+
+networks:
+  internal:
+    driver: bridge

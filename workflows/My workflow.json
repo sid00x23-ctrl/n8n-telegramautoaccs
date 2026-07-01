@@ -1,0 +1,174 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "5c8c0145-b28a-4d63-a8af-4a69bd859de0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "281713ba-1ec8-4853-8fb5-7014f20c590d",
+      "name": "Webhook",
+      "webhookId": "5c8c0145-b28a-4d63-a8af-4a69bd859de0"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Webhook').first().json.body.message }}",
+        "options": {
+          "systemMessage": "Ты - Настя. Приглашаешь девушек на онлайн встречу на некоммерческой основе в среду 24 июня в 18:00 мск. \n\nТвоя задача - довести девушку до записи, если она согласна и идёт на контакт. Если отказывается - не давить, вежливо попрощаться.\n\nДля чего встреча:\n  1. Поддержать себя в кризис, чтобы выйти из него не ломая себя\n  2. Познакомиться с девушками близкими по духу\n  3. Обсудить как убрать хаос в голове и вернуть себе себя\n\n  Как проходит:\n  1. Проводим интерактив - определяем главную зону для фокуса\n  2. Я делюсь техникой \"12 недель\" - 6 правил плана по выходу в прайм-эру 😄\n\n  Сценарий:\n  - Положительный ответ на приглашение → расскажи подробнее о встрече\n  - Согласна записаться → дай ссылку https://t.me/+a5hdQuzd1u84Mzky и сразу спроси про её запрос/вопрос\n  - Вопросы → отвечай из информации выше\n  - Отказ → вежливо попрощайся\n\nПиши коротко, по-человечески, без официоза. В сообщениях не используй длинные тире, только короткие."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        528,
+        -48
+      ],
+      "id": "472b2cb1-66d9-4f1f-a2d9-bb010264256e",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        416,
+        224
+      ],
+      "id": "12419a66-1ca3-4c2f-a6ac-84193fdb15df",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "EYjXd38SjO4e5o6G",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').first().json.body.telegram_user_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.6,
+      "position": [
+        688,
+        256
+      ],
+      "id": "7af9f84c-64d0-4d8a-a24b-17b7d58d45c2",
+      "name": "Redis Chat Memory",
+      "credentials": {
+        "redis": {
+          "id": "1OHrqXq0D0OPcKI7",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/api/messages/send ",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "telegram_user_id",
+              "value": "={{ $('Webhook').first().json.body.telegram_user_id }}"
+            },
+            {
+              "name": "account_label",
+              "value": "={{ $('Webhook').first().json.body.account_label }}"
+            },
+            {
+              "name": "message_text",
+              "value": "={{ $('AI Agent').first().json.output.replace(/—/g, '-') }}"
+            },
+            {
+              "name": "typing_delay",
+              "value": "3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        976,
+        0
+      ],
+      "id": "7b99b454-2df2-47f7-ad5f-b03db6dbbf94",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "f2d5a057-1f69-4e57-adfa-373adda150e4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c52da40aeace5ef95e3ada4aa69d85776465b4a4f766548f4a85a9849a002944"
+  },
+  "nodeGroups": [],
+  "id": "ayjOkfa7ZfJ0LXqG",
+  "tags": []
+}

@@ -1,0 +1,161 @@
+{
+  "updatedAt": "2026-06-26T20:24:02.997Z",
+  "createdAt": "2026-06-24T18:32:51.342Z",
+  "id": "JaZVOGqGJfzZrT8Q",
+  "name": "06 - Delivery Callback (результаты отправки)",
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-delivery",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "delivery-webhook-001",
+      "name": "Webhook: delivery результат",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "6c921035-1d15-4ee8-996b-b8cc6d688179"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\": \"received\"}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "delivery-respond-001",
+      "name": "Ответ сервису (200 OK)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-error-01",
+              "leftValue": "={{ $json.body.status }}",
+              "rightValue": "error",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "delivery-if-001",
+      "name": "IF: статус error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig",
+          "cachedResultName": "Clients Sheet"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "0",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "User_id": "={{ $json.body.chat_id }}",
+            "Статус": "error_greetings"
+          },
+          "matchingColumns": [
+            "User_id"
+          ],
+          "schema": [
+            {
+              "id": "User_id",
+              "displayName": "User_id"
+            },
+            {
+              "id": "Статус",
+              "displayName": "Статус"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "delivery-gs-001",
+      "name": "GSheets: error_greetings",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        464,
+        -96
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "THxu89rT7ChaXOMp",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: delivery результат": {
+      "main": [
+        [
+          {
+            "node": "Ответ сервису (200 OK)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF: статус error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: статус error?": {
+      "main": [
+        [
+          {
+            "node": "GSheets: error_greetings",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  }
+}

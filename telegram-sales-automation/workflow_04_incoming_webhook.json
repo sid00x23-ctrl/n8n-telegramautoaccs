@@ -1,0 +1,651 @@
+{
+  "updatedAt": "2026-06-26T20:11:15.353Z",
+  "createdAt": "2026-06-19T09:30:02.582Z",
+  "id": "LqkGs8MisUlrpm2r",
+  "name": "04 - Входящие сообщения (Webhook от Telethon)",
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-incoming",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-0001-0001-000000000001",
+      "name": "Webhook: входящее сообщение",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        208,
+        304
+      ],
+      "webhookId": "56f90e11-c56b-4ccf-876e-ff13f5d49572",
+      "onError": "continueRegularOutput",
+      "notes": "Telethon-сервис шлёт сюда все входящие ЛС. URL: http://n8n-host:5678/webhook/telegram-incoming"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\": \"received\"}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a1b2c3d4-0004-0001-0001-000000000002",
+      "name": "Ответ сервису (200 OK)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        544
+      ],
+      "notes": "Отвечаем сразу, чтобы не блокировать Telethon-сервис"
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $input.first().json.body;\nreturn [{ json: {\n  chat_id:       b.chat_id,\n  message_text:  b.message_text,\n  account_id:    b.account_id,\n  from_user_id:  b.from_user_id,\n  from_username: b.from_username ?? '',\n  message_id:    b.message_id,\n  timestamp:     b.timestamp,\n} }];"
+      },
+      "id": "a1b2c3d4-0004-0001-0001-000000000003",
+      "name": "Нормализуем входящие данные",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.Статус }}",
+              "rightValue": "greetings_sent",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.Статус }}",
+              "rightValue": "details",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c3",
+              "leftValue": "={{ $json.Статус }}",
+              "rightValue": "ask_request",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "a15fdb12-61cf-425f-9a16-c80976720004",
+              "leftValue": "={{ $json.Статус }}",
+              "rightValue": "doubt",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "wf04-check-if",
+      "name": "Диалог найден?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        928,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "push",
+        "list": "={{ 'buffer:' + $('Нормализуем входящие данные').item.json.chat_id }}",
+        "messageData": "={{ $('Нормализуем входящие данные').item.json.message_text }}"
+      },
+      "id": "wf04-redis-push",
+      "name": "Пушим в буфер",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        304
+      ],
+      "credentials": {
+        "redis": {
+          "id": "1OHrqXq0D0OPcKI7",
+          "name": "Redis account"
+        }
+      },
+      "notes": "Добавляем сообщение в список buffer:{chat_id}"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ Object.values($json)[0] }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf04-first-check",
+      "name": "Первый?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "messages",
+        "key": "={{ 'buffer:' + $('Нормализуем входящие данные').item.json.chat_id }}",
+        "keyType": "list",
+        "options": {}
+      },
+      "id": "wf04-redis-get",
+      "name": "Читаем буфер",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1984,
+        304
+      ],
+      "credentials": {
+        "redis": {
+          "id": "1OHrqXq0D0OPcKI7",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ 'buffer:' + $('Нормализуем входящие данные').item.json.chat_id }}"
+      },
+      "id": "wf04-redis-del-buf",
+      "name": "Удаляем буфер",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2192,
+        304
+      ],
+      "credentials": {
+        "redis": {
+          "id": "1OHrqXq0D0OPcKI7",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const messages = $('Читаем буфер').item.json.messages;\nconst chatId = $('Нормализуем входящие данные').item.json.chat_id;\nconst accountId = $('Нормализуем входящие данные').item.json.account_id;\n\nconst msgsArray = Array.isArray(messages) ? messages : [messages ?? ''];\nconst messagesText = msgsArray.join('\\n---\\n');\n\nreturn [{ json: {\n  chat_id: chatId,\n  account_id: accountId,\n  message_count: msgsArray.length,\n  messages_text: messagesText\n} }];"
+      },
+      "id": "wf04-merge-code",
+      "name": "Готовим текст для AI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2416,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.messages_text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Ты получаешь сообщения от одного пользователя (разделены ---). Не отвечай на них. Твоя задача - объеденить эти сообщения в одно. Если сообщение одно — верни его без изменений. Верни ТОЛЬКО результат, без пояснений и лишнего форматирования."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "wf04-ai-merge",
+      "name": "AI: объединяем сообщения",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        2816,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "wf04-deepseek-merge",
+      "name": "DeepSeek: слияние",
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        2816,
+        480
+      ],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "EYjXd38SjO4e5o6G",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "5cKmoa4bf7iPp0GH",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/5cKmoa4bf7iPp0GH"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chat_id": "={{ $('Готовим текст для AI').item.json.chat_id }}",
+            "message_text": "={{ $json.text }}",
+            "account_id": "={{ $('Готовим текст для AI').item.json.account_id }}",
+            "message_id": "={{ $('Нормализуем входящие данные').item.json.message_id }}",
+            "from_username": "={{ $('Нормализуем входящие данные').item.json.from_username }}"
+          },
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "wf04-launch-wf3",
+      "name": "Запускаем ядро диалога",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        3312,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "llen",
+        "list": "={{ 'buffer:' + $('Нормализуем входящие данные').item.json.chat_id }}"
+      },
+      "id": "wf04-redis-llen",
+      "name": "Длина буфера",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        528
+      ],
+      "credentials": {
+        "redis": {
+          "id": "1OHrqXq0D0OPcKI7",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "expire"
+      },
+      "id": "wf04-redis-ttl",
+      "name": "TTL на буфер",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        128
+      ],
+      "credentials": {
+        "redis": {
+          "id": "1OHrqXq0D0OPcKI7",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 70
+      },
+      "id": "wf04-wait",
+      "name": "Ждем 60 секунд",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1792,
+        512
+      ],
+      "webhookId": "c3d4e5f6-0004-0001-0001-000000000001",
+      "notes": "Ждём 1 минуту — за это время пользователь может написать ещё сообщения"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig",
+          "mode": "list",
+          "cachedResultName": "таблица для рассылки",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Клиенты",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "User_id",
+              "lookupValue": "={{ $json.chat_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        304
+      ],
+      "id": "2b3e5893-285d-4371-ae2f-686f210247aa",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "THxu89rT7ChaXOMp",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-msg-count",
+              "leftValue": "={{ $json.message_count }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf04-if-single",
+      "name": "Один или несколько?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2624,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-text",
+              "name": "text",
+              "value": "={{ $json.messages_text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "wf04-set-single",
+      "name": "Одно сообщение: передаём как есть",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2832,
+        624
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook: входящее сообщение": {
+      "main": [
+        [
+          {
+            "node": "Нормализуем входящие данные",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Нормализуем входящие данные": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Диалог найден?": {
+      "main": [
+        [
+          {
+            "node": "Пушим в буфер",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Первый?": {
+      "main": [
+        [
+          {
+            "node": "Ждем 60 секунд",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Читаем буфер": {
+      "main": [
+        [
+          {
+            "node": "Удаляем буфер",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Удаляем буфер": {
+      "main": [
+        [
+          {
+            "node": "Готовим текст для AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek: слияние": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: объединяем сообщения",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: объединяем сообщения": {
+      "main": [
+        [
+          {
+            "node": "Запускаем ядро диалога",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Длина буфера": {
+      "main": [
+        [
+          {
+            "node": "Первый?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Пушим в буфер": {
+      "main": [
+        [
+          {
+            "node": "TTL на буфер",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Длина буфера",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ждем 60 секунд": {
+      "main": [
+        [
+          {
+            "node": "Читаем буфер",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Ответ сервису (200 OK)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Диалог найден?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Готовим текст для AI": {
+      "main": [
+        [
+          {
+            "node": "Один или несколько?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Один или несколько?": {
+      "main": [
+        [
+          {
+            "node": "AI: объединяем сообщения",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Одно сообщение: передаём как есть",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Одно сообщение: передаём как есть": {
+      "main": [
+        [
+          {
+            "node": "Запускаем ядро диалога",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "tags": [
+    {
+      "id": "NqGObgJMcW5V9J43",
+      "name": "AnastyMEETING"
+    }
+  ]
+}

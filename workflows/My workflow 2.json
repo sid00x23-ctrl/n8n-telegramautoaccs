@@ -1,0 +1,250 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        -32
+      ],
+      "id": "09ff72ad-97da-40a8-95fb-f5ea0acc04ca",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig",
+          "mode": "list",
+          "cachedResultName": "таблица для рассылки",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Статус"
+            },
+            {
+              "lookupColumn": "Пол",
+              "lookupValue": "Жен"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "00d1858a-0e11-40b6-8e10-7fcc7abaaefa",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "THxu89rT7ChaXOMp",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "50fa3151-c89a-44d6-b5cc-42705ae84249",
+              "leftValue": "={{ $json.User_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "c03cd6fa-17c4-404b-b4e8-f7610bb686ba",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "857a2fc8-bab3-491e-acd3-ec8f7a2b390e",
+              "name": "Account_label",
+              "value": "anasty_4",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -32,
+        -192
+      ],
+      "id": "e8b056f0-7f50-4d2b-98c5-2f098e6ac79b",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:8000/api/accounts ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        176,
+        -192
+      ],
+      "id": "299e14cb-bc38-45d9-a653-e965affb7ce4",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const accountLabel = $('Edit Fields').first().json.Account_label;\n  const accounts = $input.first().json;\n\n  // Найти наш аккаунт в списке\n  const allAccounts = Array.isArray($input.first().json)\n    ? $input.first().json\n    : $input.all().map(i => i.json);\n\n  const account = allAccounts.find(a => a.label === accountLabel);\n\n  if (!account) throw new Error(`Аккаунт ${accountLabel} не найден`);\n  if (!account.is_active) throw new Error(`Аккаунт ${accountLabel} неактивен`);\n\n  return [{ json: { account_label: accountLabel, is_active: true } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        -192
+      ],
+      "id": "aeb00a9a-e408-4296-b9a6-642fd1b98d88",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "accountLabel": "={{ $('Edit Fields').first().json.Account_label }}",
+        "messageText": "={{ $json.message_text }}",
+        "mode": "direct",
+        "additionalFields": {}
+      },
+      "type": "CUSTOM.botrassilkaMessage",
+      "typeVersion": 1,
+      "position": [
+        816,
+        0
+      ],
+      "id": "255996ce-b1d7-45ac-a5ab-32ad3b7ae17c",
+      "name": "Telegram Message",
+      "credentials": {
+        "botrassilkaApi": {
+          "id": "lCTTeMBfvxirPPDr",
+          "name": "Botrassilka account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "8a26e472-9d01-478f-a5d8-6085a93894db",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c52da40aeace5ef95e3ada4aa69d85776465b4a4f766548f4a85a9849a002944"
+  },
+  "nodeGroups": [],
+  "id": "dn4EawMyxYEZQwgV",
+  "tags": []
+}

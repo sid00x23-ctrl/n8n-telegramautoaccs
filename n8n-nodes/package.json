@@ -1,0 +1,31 @@
+{
+  "name": "n8n-nodes",
+  "version": "0.1.0",
+  "description": "Botrassilka nodes for n8n — Telegram mass messaging automation",
+  "keywords": ["n8n-community-node-package"],
+  "license": "MIT",
+  "author": "botrassilka",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "dev": "tsc --project tsconfig.json --watch"
+  },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/BotrassilkaApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/BotrassilkaAccounts/BotrassilkaAccounts.node.js",
+      "dist/nodes/BotrassilkaContacts/BotrassilkaContacts.node.js",
+      "dist/nodes/BotrassilkaMessage/BotrassilkaMessage.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "n8n-workflow": "*",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}

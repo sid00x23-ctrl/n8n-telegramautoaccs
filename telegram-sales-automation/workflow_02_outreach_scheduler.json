@@ -1,0 +1,575 @@
+{
+  "updatedAt": "2026-06-29T07:43:37.340Z",
+  "createdAt": "2026-06-19T09:30:02.611Z",
+  "id": "Q0VzwoQGw3lrB1Ez",
+  "name": "02 - Планировщик рассылки (Старт диалогов)",
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0002-0001-0001-000000000002",
+      "name": "Читаем новых клиентов",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        688,
+        464
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Статус",
+              "lookupValue": "assigned"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "THxu89rT7ChaXOMp",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0002-0001-0001-000000000003",
+      "name": "По 1 клиенту на аккаунт",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        304
+      ],
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst seen = new Set();\nconst result = [];\n\nfor (const item of items) {\n  const userId  = item.json['User_id'];\n  const account = item.json['Аккаунт'];\n\n  if (\\!userId || String(userId).trim() === '') continue;\n  if (\\!account || String(account).trim() === '') continue;\n\n  // Один клиент на аккаунт за цикл\n  if (seen.has(account)) continue;\n  seen.add(account);\n\n  result.push(item);\n}\n\nconsole.log(`К отправке: ${result.length} (аккаунтов: ${seen.size})`);\nreturn result;"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0002-0001-0001-000000000004",
+      "name": "Есть клиенты?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        896,
+        304
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0002-0001-0001-000000000005",
+      "name": "Отправляем приветствие через сервис",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        272
+      ],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Есть клиенты?').item.json['Аккаунт'] }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $('Есть клиенты?').item.json['User_id'] }}"
+            },
+            {
+              "name": "username",
+              "value": "={{ $('Есть клиенты?').item.json['Username'] || '' }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('Сохраняем текст').item.json.text || $('Сохраняем текст').item.json.response }}"
+            },
+            {
+              "name": "rate_limited",
+              "value": "true"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0002-0001-0001-000000000007",
+      "name": "Обновляем статус в Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1744,
+        272
+      ],
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "User_id": "={{ $('Есть клиенты?').item.json['User_id'] }}",
+            "Статус": "greetings_sent",
+            "Дата контакта": "={{ new Date().toLocaleString('sv-SE', {timeZone: 'Europe/Moscow'}).substring(0,16) }}",
+            "row_number": 0,
+            "Ответы": "={{ new Date().toLocaleString('sv-SE', {timeZone:'Europe/Moscow'}).substring(0,16) + ' 🤖 ' + $('Сохраняем текст').item.json.greeting_text }}"
+          },
+          "matchingColumns": [
+            "User_id"
+          ],
+          "schema": [
+            {
+              "id": "User_id",
+              "displayName": "User_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Статус",
+              "displayName": "Статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Дата контакта",
+              "displayName": "Дата контакта",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ответы",
+              "displayName": "Ответы",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "THxu89rT7ChaXOMp",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "wf02-greeting-agent",
+      "name": "AI: генерируем приветствие",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1232,
+        272
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json['Имя(Диалог)'] || $json['Имя'] || 'Друг' }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Ты пишешь приветственное сообщение.\n\nШаблон:\n\"{input}, привет, это Настя🤍 Слушай, я хочу тебя пригласить на камерную встречу для девушек с нестандартным мышлением. Встреча онлайн в следующую среду, у тебя будет время, прислать инфу?\"\n\nПравила:\n- Чуть перефразируй шаблон, чтобы избежать спам фильтров, просто чтобы не был идентичным\n- Фразу \"с нестандартным мышлением\" оставляй ТОЧНО как есть\n- Имя клиента из {input} оставляй ТОЧНО как есть\n- Это ПЕРВОЕ сообщение клиенту"
+            }
+          ]
+        },
+        "batching": {}
+      }
+    },
+    {
+      "id": "wf02-deepseek-greeting",
+      "name": "DeepSeek: приветствие",
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        464
+      ],
+      "parameters": {
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "credentials": {
+        "deepSeekApi": {
+          "id": "EYjXd38SjO4e5o6G",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "id": "ed4942e4-0bae-4f95-a5e9-6c48f0ac4b18",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1072,
+        192
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "1f064c9e-f233-406c-a9f6-fcebaf890f5a",
+                    "leftValue": "={{ $json['Имя(Диалог)'] }}",
+                    "rightValue": "Настя",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Насте"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "5e8d2591-44b6-4a79-a10b-b0c599f6057d",
+                    "leftValue": "={{ $json['Имя(Диалог)'] }}",
+                    "rightValue": "Настя",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Не Насте"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "0304053f-abf3-4558-9a8d-23566a84611d",
+      "name": "AI: генерируем приветствие1",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1232,
+        -16
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json['Имя(Диалог)'] || $json['Имя'] || 'Друг' }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Ты пишешь приветственное сообщение. Приглашаешь девушек на встречу. \n\nШаблон:\n\"{ИМЯ}, привет🤍 Слушай, я хочу тебя пригласить на камерную встречу для девушек с нестандартным мышлением. Встреча онлайн в следующую среду, у тебя будет время, прислать инфу?\"\n\nПравила:\n- Чуть перефразируй шаблон, чтобы избежать спам фильтров, просто чтобы не был идентичным\n- Фразы \"{input}, привет🤍\", \"с нестандартным мышлением\",\"хочу тебя пригласить\"  оставляй ТОЧНО как есть."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "009e681b-bfad-44c6-8158-f74488009c22",
+      "name": "DeepSeek Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        128
+      ],
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "credentials": {
+        "deepSeekApi": {
+          "id": "EYjXd38SjO4e5o6G",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "id": "save-greeting-text-001",
+      "name": "Сохраняем текст",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        272
+      ],
+      "parameters": {
+        "jsCode": "// Обрабатываем все items, а не только первый\nreturn $input.all().map(item => {\n  const text = item.json.text || item.json.response || '';\n  return {\n    json: {\n      ...item.json,\n      greeting_text: text\n    }\n  };\n});"
+      }
+    },
+    {
+      "id": "schedule-5min-trigger-001",
+      "name": "c 9 до 18",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        272,
+        464
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "30 10 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 12 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "30 13 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 15 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "30 16 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * *"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Читаем новых клиентов": {
+      "main": [
+        [
+          {
+            "node": "По 1 клиенту на аккаунт",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "По 1 клиенту на аккаунт": {
+      "main": [
+        [
+          {
+            "node": "Есть клиенты?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Есть клиенты?": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "AI: генерируем приветствие1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI: генерируем приветствие",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: генерируем приветствие": {
+      "main": [
+        [
+          {
+            "node": "Сохраняем текст",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: генерируем приветствие1": {
+      "main": [
+        [
+          {
+            "node": "Сохраняем текст",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek: приветствие": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: генерируем приветствие",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: генерируем приветствие1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сохраняем текст": {
+      "main": [
+        [
+          {
+            "node": "Обновляем статус в Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Обновляем статус в Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Отправляем приветствие через сервис",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "c 9 до 18": {
+      "main": [
+        [
+          {
+            "node": "Читаем новых клиентов",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Moscow",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "tags": [
+    {
+      "id": "NqGObgJMcW5V9J43",
+      "name": "AnastyMEETING"
+    }
+  ]
+}

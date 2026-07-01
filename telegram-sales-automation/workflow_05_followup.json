@@ -1,0 +1,350 @@
+{
+  "updatedAt": "2026-06-27T17:43:01.185Z",
+  "createdAt": "2026-06-24T14:50:44.726Z",
+  "id": "OwGBQYP0YFKSGNYW",
+  "name": "05 - Авто-дожим (follow-up после greetings)",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "followup-schedule-001",
+      "name": "Каждые 10 минут",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -144,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Фильтруем просроченные (> 1 ч)').item.json['Аккаунт'] }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $('Фильтруем просроченные (> 1 ч)').item.json['User_id'] }}"
+            },
+            {
+              "name": "username",
+              "value": "={{ $('Фильтруем просроченные (> 1 ч)').item.json['Username'] || '' }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('AI: перефразируем детали').item.json.text }}"
+            },
+            {
+              "name": "rate_limited",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "followup-http-send-001",
+      "name": "Отправляем детали (follow-up)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        992,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig",
+          "cachedResultName": "Clients Sheet"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "0",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "User_id": "={{ $('Фильтруем просроченные (> 1 ч)').item.json['User_id'] }}",
+            "Статус": "details",
+            "Дата контакта": "={{ new Date().toLocaleString('sv-SE', {timeZone: 'Europe/Moscow'}).substring(0,16) }}",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "User_id"
+          ],
+          "schema": [
+            {
+              "id": "User_id",
+              "displayName": "User_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Статус",
+              "displayName": "Статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Дата контакта",
+              "displayName": "Дата контакта",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "followup-gs-update-001",
+      "name": "Обновляем GSheets → details (follow-up)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        800,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "THxu89rT7ChaXOMp",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Статус",
+              "lookupValue": "greetings_sent"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "followup-gs-read-001",
+      "name": "Читаем greetings_sent из GSheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        16,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "THxu89rT7ChaXOMp",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst oneHourAgo = Date.now() - 60 * 60 * 1000;\nreturn items.filter(item => {\n  const dateStr = item.json['Дата контакта'];\n  if (!dateStr) return false;\n  const padded = dateStr.replace(/(\\d{4}-\\d{2}-\\d{2}) (\\d):/, '$1 0$2:');\n  const utcDate = new Date(padded.replace(' ', 'T') + ':00+03:00');\n  return utcDate.getTime() < oneHourAgo;\n});"
+      },
+      "id": "followup-filter-time-001",
+      "name": "Фильтруем просроченные (> 1 ч)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Тебе нужно отправить клиенту сообщение с деталями встречи:\n\nОтправь следующий текст:\n\n---\n{{ $json.text }}\n\nМы это делаем на некоммерческой основе, поэтому достаточно зарегистрироваться. Это будет в среду 8.07 в 18мск, онлайн. Успеваешь по времени?\n---\n\nПравила:\n- {{ $json.text }} нельзя изменять\n- От «Мы это делаем» — можно перефразировать свободно\n- Между {{ $json.text }} и \"Мы это делаем\" - (\\n\\n)пустой абзац\n- Ответь ТОЛЬКО готовым текстом: без пояснений, заголовков, маркеров.\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "2b9f74ba-532c-4e36-8bad-da92064abfc7",
+      "name": "AI: перефразируем детали",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        480,
+        176
+      ],
+      "id": "2f4b2d87-8cf8-4903-9dd1-45109608a0dc",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "EYjXd38SjO4e5o6G",
+          "name": "DeepSeek account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Каждые 10 минут": {
+      "main": [
+        [
+          {
+            "node": "Читаем greetings_sent из GSheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Читаем greetings_sent из GSheets": {
+      "main": [
+        [
+          {
+            "node": "Фильтруем просроченные (> 1 ч)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Фильтруем просроченные (> 1 ч)": {
+      "main": [
+        [
+          {
+            "node": "Выбираем шаблон greetings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Выбираем шаблон greetings": {
+      "main": [
+        [
+          {
+            "node": "AI: перефразируем детали",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: перефразируем детали",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: перефразируем детали": {
+      "main": [
+        [
+          {
+            "node": "Обновляем GSheets → details (follow-up)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Обновляем GSheets → details (follow-up)": {
+      "main": [
+        [
+          {
+            "node": "Отправляем детали (follow-up)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "binaryMode": "separate"
+  },
+  "tags": [
+    {
+      "id": "NqGObgJMcW5V9J43",
+      "name": "AnastyMEETING"
+    }
+  ]
+}

@@ -1,0 +1,211 @@
+{
+  "updatedAt": "2026-06-27T11:46:09.514Z",
+  "createdAt": "2026-06-19T09:30:02.596Z",
+  "id": "q7APDdingyotfez8",
+  "name": "01 - Назначение исполнителей клиентам",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Запуск вручную",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        16,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Статус",
+              "lookupValue": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000002",
+      "name": "Читаем новых клиентов",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        576,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "THxu89rT7ChaXOMp",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Авторизованные аккаунты из сервиса (агрегированы в один item)\nconst accountsList = $('Агрегируем аккаунты').item.json.accounts || [];\nconst authorized = accountsList.filter(a => a.authorized === true);\n\nif (!authorized.length) {\n  throw new Error('Нет авторизованных аккаунтов в сервисе');\n}\n\n// Клиенты из GSheets\nconst clients = $input.all().filter(c =>\n  String(c.json['User_id'] || '').trim() !== ''\n);\n\nif (!clients.length) {\n  console.log('Нет новых клиентов для назначения');\n  return [];\n}\n\n// Stateful round-robin: счётчик сохраняется между запусками\nconst state = $getWorkflowStaticData('global');\nlet idx = Number(state.rrIndex ?? 0);\n\nconst now = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Moscow' }).substring(0, 16);\n\nconst result = clients.map(c => {\n  const account = authorized[idx % authorized.length];\n  idx++;\n  return {\n    json: {\n      ...c.json,\n      executor_bot_id: account.account_id,\n      Аккаунт: account.account_id,\n      Статус: 'assigned',\n      Дата_контакта: now,\n    }\n  };\n});\n\nstate.rrIndex = idx;\nreturn result;"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000004",
+      "name": "Round-Robin назначение",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "User_id": "={{ $json['User_id'] }}",
+            "Статус": "assigned",
+            "Аккаунт": "={{ $json.executor_bot_id }}",
+            "Дата контакта": "={{ $json['Дата_контакта'] }}"
+          },
+          "matchingColumns": [
+            "User_id"
+          ],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000005",
+      "name": "Обновляем статус в таблице",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        992,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "THxu89rT7ChaXOMp",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:8000/accounts",
+        "options": {}
+      },
+      "id": "get-accounts-001",
+      "name": "Получаем аккаунты",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        192,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Схлопываем все items аккаунтов в один item с массивом\nconst accounts = $input.all().map(item => item.json);\nreturn [{ json: { accounts } }];"
+      },
+      "id": "aggregate-accounts-001",
+      "name": "Агрегируем аккаунты",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        304
+      ]
+    }
+  ],
+  "connections": {
+    "Читаем новых клиентов": {
+      "main": [
+        [
+          {
+            "node": "Round-Robin назначение",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Round-Robin назначение": {
+      "main": [
+        [
+          {
+            "node": "Обновляем статус в таблице",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Запуск вручную": {
+      "main": [
+        [
+          {
+            "node": "Получаем аккаунты",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Получаем аккаунты": {
+      "main": [
+        [
+          {
+            "node": "Агрегируем аккаунты",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Агрегируем аккаунты": {
+      "main": [
+        [
+          {
+            "node": "Читаем новых клиентов",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": null,
+  "tags": [
+    {
+      "id": "NqGObgJMcW5V9J43",
+      "name": "AnastyMEETING"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+# Dependencies & build artifacts
+node_modules/
+dist/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Secrets & client-specific data
+.env
+*.session
+*.session-journal
+sessions/
+accounts_config.json
+
+# MCP config — содержит API-ключи и локальные пути
+.mcp.json
+
+# n8n runtime data
+.n8n/
+.n8n-extensions/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
