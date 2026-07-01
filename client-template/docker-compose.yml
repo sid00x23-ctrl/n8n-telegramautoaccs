@@ -17,6 +17,7 @@ services:
       N8N_DIAGNOSTICS_ENABLED: "false"
       N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
       N8N_TRUST_PROXY: "true"
+      N8N_PROXY_HOPS: "1"
     networks:
       - internal
 
