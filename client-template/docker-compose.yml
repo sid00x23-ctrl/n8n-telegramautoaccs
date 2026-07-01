@@ -16,7 +16,6 @@ services:
       N8N_EDITOR_BASE_URL: "https://${N8N_DOMAIN}"
       N8N_DIAGNOSTICS_ENABLED: "false"
       N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
-      N8N_RUNNERS_ENABLED: "false"
     networks:
       - internal
 
