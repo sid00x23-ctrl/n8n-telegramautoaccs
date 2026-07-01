@@ -28,7 +28,7 @@ services:
       HEADLESS: "true"
     volumes:
       - ./sessions:/app/sessions
-      - ./accounts_config.json:/app/accounts_config.json:ro
+      - ./accounts_config.json:/app/accounts_config.json
     networks:
       - internal
 
