@@ -242,8 +242,7 @@
     document.getElementById('usernameLabel').textContent = data.username;
     document.getElementById('greetUser').textContent = `, ${data.username}`;
 
-    // n8n карточка всегда ведёт через SSO-прокси /go/n8n
-    document.getElementById('n8nCard').href = '/go/n8n';
+    document.getElementById('n8nCard').href = data.n8n_url || '/n8n/';
 
     document.getElementById('logoutBtn').addEventListener('click', () => logout());
   </script>
