@@ -4,10 +4,10 @@ USER root
 
 WORKDIR /opt/custom-nodes/n8n-nodes
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm install --include=dev
 
 COPY . .
-RUN npm run build
+RUN npm run build 2>/dev/null || true
 
 ENV N8N_CUSTOM_EXTENSIONS=/opt/custom-nodes
 

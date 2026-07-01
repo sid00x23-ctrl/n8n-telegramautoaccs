@@ -2,7 +2,7 @@ name: ${CLIENT_ID}
 
 services:
   n8n:
-    image: botrassilka-n8n:latest
+    image: n8nio/n8n:latest
     restart: unless-stopped
     ports:
       - "${N8N_PORT}:5678"
