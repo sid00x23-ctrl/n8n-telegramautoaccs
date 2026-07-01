@@ -22,7 +22,11 @@ JWT_SECRET = os.getenv("JWT_SECRET", "change-me-please")
 JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
 USERBOT_API_URL = os.getenv("USERBOT_API_URL", "http://userbot:8000")
 N8N_URL = os.getenv("N8N_URL", "")
+N8N_INTERNAL_URL = os.getenv("N8N_INTERNAL_URL", "http://n8n:5678")
+N8N_OWNER_EMAIL = os.getenv("N8N_OWNER_EMAIL", "")
+N8N_OWNER_PASSWORD = os.getenv("N8N_OWNER_PASSWORD", "")
 TOKEN_COOKIE = "portal_token"
+N8N_COOKIE = "n8n-auth"
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -102,6 +106,58 @@ async def me(request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     return {"username": user, "n8n_url": N8N_URL}
+
+
+# ── n8n SSO ───────────────────────────────────────────────────────────────────
+
+@app.get("/go/n8n")
+async def go_n8n(request: Request, response: Response):
+    """
+    SSO-переход в n8n: проверяет сессию портала, логинится в n8n на сервере,
+    передаёт n8n-auth cookie браузеру и редиректит на интерфейс n8n.
+    """
+    require_auth(request)
+
+    if not N8N_OWNER_EMAIL or not N8N_OWNER_PASSWORD:
+        # SSO не настроен — просто редирект, пользователь войдёт сам
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=N8N_URL or "/n8n/")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{N8N_INTERNAL_URL}/rest/login",
+                json={"emailOrLdapLoginId": N8N_OWNER_EMAIL, "password": N8N_OWNER_PASSWORD},
+                headers={"Content-Type": "application/json"},
+            )
+    except httpx.ConnectError:
+        raise HTTPException(status_code=502, detail="n8n недоступен")
+
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail="n8n: ошибка авторизации")
+
+    # Находим n8n-auth cookie в ответе
+    n8n_cookie_value = None
+    for set_cookie in resp.headers.get_list("set-cookie"):
+        if set_cookie.startswith("n8n-auth="):
+            n8n_cookie_value = set_cookie.split("=", 1)[1].split(";")[0]
+            break
+
+    if not n8n_cookie_value:
+        raise HTTPException(status_code=502, detail="n8n не вернул cookie")
+
+    from fastapi.responses import RedirectResponse
+    redirect = RedirectResponse(url=N8N_URL or "/n8n/", status_code=302)
+    redirect.set_cookie(
+        N8N_COOKIE,
+        n8n_cookie_value,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        path="/",
+        max_age=604800,
+    )
+    return redirect
 
 
 # ── Proxy → userbot service ───────────────────────────────────────────────────

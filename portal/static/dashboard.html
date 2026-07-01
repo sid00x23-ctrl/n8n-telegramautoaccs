@@ -242,17 +242,8 @@
     document.getElementById('usernameLabel').textContent = data.username;
     document.getElementById('greetUser').textContent = `, ${data.username}`;
 
-    const n8nCard = document.getElementById('n8nCard');
-    if (data.n8n_url) {
-      n8nCard.href = data.n8n_url;
-      n8nCard.target = '_blank';
-      n8nCard.rel = 'noopener noreferrer';
-    } else {
-      n8nCard.style.opacity = '.5';
-      n8nCard.style.cursor = 'default';
-      n8nCard.href = 'javascript:void(0)';
-      n8nCard.title = 'N8N_URL не задан на сервере';
-    }
+    // n8n карточка всегда ведёт через SSO-прокси /go/n8n
+    document.getElementById('n8nCard').href = '/go/n8n';
 
     document.getElementById('logoutBtn').addEventListener('click', () => logout());
   </script>
