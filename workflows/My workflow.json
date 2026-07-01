@@ -76,7 +76,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/api/messages/send ",
+        "url": "={{ $vars.USERBOT_URL }}/api/messages/send ",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [

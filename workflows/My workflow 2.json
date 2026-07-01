@@ -116,7 +116,7 @@
     },
     {
       "parameters": {
-        "url": "http://127.0.0.1:8000/api/accounts ",
+        "url": "={{ $vars.USERBOT_URL }}/api/accounts ",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",

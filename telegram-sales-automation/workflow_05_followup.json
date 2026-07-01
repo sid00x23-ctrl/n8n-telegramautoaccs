@@ -29,7 +29,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/send",
+        "url": "={{ $vars.USERBOT_URL }}/send",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
