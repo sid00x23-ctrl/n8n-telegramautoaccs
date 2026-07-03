@@ -93,6 +93,20 @@
       color: var(--primary);
       font-weight: 600;
     }
+    .filter-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .d-account-badge {
+      font-size: 10px;
+      color: var(--primary);
+      opacity: 0.75;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
     .dialogs-list { flex: 1; overflow-y: auto; }
     .dialogs-list::-webkit-scrollbar { width: 4px; }
@@ -425,21 +439,25 @@ let allDialogs     = [];
 let lastMsgId      = 0;
 let pollTimer      = null;
 let sentOnly       = true;
+let allAccountsMode = false;
+let authorizedAccounts = [];
 
 // ── Accounts ───────────────────────────────────────────────────────────────
 async function loadAccounts() {
   try {
     const accounts = await api('GET', '/api/accounts');
-    const authed = accounts.filter(a => a.authorized);
+    authorizedAccounts = accounts.filter(a => a.authorized);
     const sel = document.getElementById('accountSel');
-    if (authed.length === 0) {
+    if (authorizedAccounts.length === 0) {
       sel.innerHTML = '<option value="">Нет авторизованных аккаунтов</option>';
       return;
     }
-    sel.innerHTML = authed.map(a =>
-      `<option value="${a.account_id}">${a.name || a.account_id}${a.username ? ' · @' + a.username : ''}</option>`
-    ).join('');
-    await selectAccount(authed[0].account_id);
+    sel.innerHTML =
+      '<option value="__all__">Все аккаунты</option>' +
+      authorizedAccounts.map(a =>
+        `<option value="${a.account_id}">${a.name || a.account_id}${a.username ? ' · @' + a.username : ''}</option>`
+      ).join('');
+    await selectAccount(authorizedAccounts[0].account_id);
   } catch (e) {
     toast('Ошибка загрузки аккаунтов: ' + e.message, 'err');
   }
@@ -447,9 +465,21 @@ async function loadAccounts() {
 
 async function selectAccount(id) {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-  currentAccount = id;
-  currentChat    = null;
-  lastMsgId      = 0;
+  allAccountsMode = (id === '__all__');
+  currentAccount  = allAccountsMode ? null : id;
+  currentChat     = null;
+  lastMsgId       = 0;
+
+  // В режиме "все аккаунты" только sent_only доступен
+  if (allAccountsMode) {
+    sentOnly = true;
+    document.getElementById('filterSent').classList.add('active');
+    document.getElementById('filterAll').classList.remove('active');
+    document.getElementById('filterAll').disabled = true;
+  } else {
+    document.getElementById('filterAll').disabled = false;
+  }
+
   document.getElementById('chatEmpty').style.display = '';
   document.getElementById('chatActive').classList.remove('visible');
   document.getElementById('dialogsList').innerHTML =
@@ -462,21 +492,42 @@ document.getElementById('accountSel').addEventListener('change', e => {
 });
 
 document.getElementById('refreshDialogsBtn').addEventListener('click', () => {
-  if (currentAccount) loadDialogs();
+  loadDialogs();
 });
 
 // ── Filter ─────────────────────────────────────────────────────────────────
 window.setFilter = function(val) {
+  if (!val && allAccountsMode) return; // "Все диалоги" недоступен в режиме всех аккаунтов
   sentOnly = val;
   document.getElementById('filterSent').classList.toggle('active', val);
   document.getElementById('filterAll').classList.toggle('active', !val);
-  if (currentAccount) loadDialogs();
+  loadDialogs();
 };
 
 // ── Dialogs ────────────────────────────────────────────────────────────────
 async function loadDialogs() {
   try {
-    allDialogs = await api('GET', `/api/accounts/${currentAccount}/dialogs?limit=200&sent_only=${sentOnly}`);
+    if (allAccountsMode) {
+      const results = await Promise.all(
+        authorizedAccounts.map(a =>
+          api('GET', `/api/accounts/${a.account_id}/dialogs?limit=200&sent_only=true`)
+            .then(dialogs => dialogs.map(d => ({
+              ...d,
+              _account_id:   a.account_id,
+              _account_name: a.name || a.account_id,
+            })))
+            .catch(() => [])
+        )
+      );
+      allDialogs = results.flat().sort((a, b) => {
+        const da = a.last_message?.date || '';
+        const db = b.last_message?.date || '';
+        return db < da ? -1 : db > da ? 1 : 0;
+      });
+    } else {
+      allDialogs = await api('GET',
+        `/api/accounts/${currentAccount}/dialogs?limit=200&sent_only=${sentOnly}`);
+    }
     renderDialogs();
   } catch (e) {
     document.getElementById('dialogsList').innerHTML =
@@ -495,18 +546,21 @@ function renderDialogs() {
   }
 
   el.innerHTML = list.map((d, i) => {
-    const init = (d.name || '?')[0].toUpperCase();
+    const init    = (d.name || '?')[0].toUpperCase();
     const preview = d.last_message
       ? (d.last_message.out ? '→ ' : '') + (d.last_message.text || '📎 Медиа')
       : '';
-    const time  = d.last_message?.date ? fmtTime(d.last_message.date) : '';
-    const badge = d.unread_count > 0 ? `<div class="d-badge">${d.unread_count}</div>` : '';
-    const active = currentChat?.id === d.id ? 'active' : '';
+    const time    = d.last_message?.date ? fmtTime(d.last_message.date) : '';
+    const badge   = d.unread_count > 0 ? `<div class="d-badge">${d.unread_count}</div>` : '';
+    const active  = (currentChat?.id === d.id && currentChat?._account_id === d._account_id) ? 'active' : '';
+    const accBadge = allAccountsMode && d._account_name
+      ? `<div class="d-account-badge">${esc(d._account_name)}</div>` : '';
     return `<div class="dialog-item ${active}" data-idx="${i}" onclick="openDialog(${i})">
       <div class="d-avatar">${esc(init)}</div>
       <div class="d-info">
         <div class="d-name">${esc(d.name || String(d.id))}</div>
         <div class="d-preview">${esc(preview)}</div>
+        ${accBadge}
       </div>
       <div class="d-meta"><div class="d-time">${time}</div>${badge}</div>
     </div>`;
@@ -523,6 +577,12 @@ window.openDialog = async function(idx) {
   if (!dialog) return;
 
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+
+  // В режиме всех аккаунтов берём account_id из диалога
+  if (allAccountsMode && dialog._account_id) {
+    currentAccount = dialog._account_id;
+  }
+
   currentChat = dialog;
   lastMsgId   = 0;
 
@@ -535,8 +595,8 @@ window.openDialog = async function(idx) {
   document.getElementById('chatAvatar').textContent = (dialog.name || '?')[0].toUpperCase();
   document.getElementById('chatName').textContent   = dialog.name || String(dialog.id);
   document.getElementById('chatSub').textContent    = dialog.username
-    ? '@' + dialog.username
-    : 'ID: ' + dialog.id;
+    ? '@' + dialog.username + (allAccountsMode ? ` · ${dialog._account_name}` : '')
+    : 'ID: ' + dialog.id + (allAccountsMode ? ` · ${dialog._account_name}` : '');
 
   document.getElementById('msgsBody').innerHTML =
     '<div style="text-align:center;color:var(--text-3);font-size:13px;padding:40px">Загрузка...</div>';
