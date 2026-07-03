@@ -21,6 +21,8 @@ PORTAL_PASSWORD = os.getenv("PORTAL_PASSWORD", "")
 JWT_SECRET = os.getenv("JWT_SECRET", "change-me-please")
 JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
 USERBOT_API_URL = os.getenv("USERBOT_API_URL", "http://userbot:8000")
+USERBOT_CONTAINER = os.getenv("USERBOT_CONTAINER", "client1-userbot-1")
+DOCKER_SOCKET = "/var/run/docker.sock"
 N8N_URL = os.getenv("N8N_URL", "")
 N8N_INTERNAL_URL = os.getenv("N8N_INTERNAL_URL", "http://n8n:5678")
 N8N_OWNER_EMAIL = os.getenv("N8N_OWNER_EMAIL", "")
@@ -228,6 +230,45 @@ async def auth_qr_wait(account_id: str, request: Request):
 async def delete_account(account_id: str, request: Request):
     require_auth(request)
     return await _proxy("DELETE", f"/accounts/{account_id}")
+
+
+# ── Docker control (userbot start/stop) ───────────────────────────────────────
+
+async def _docker(method: str, path: str):
+    transport = httpx.AsyncHTTPTransport(uds=DOCKER_SOCKET)
+    async with httpx.AsyncClient(transport=transport, base_url="http://docker") as client:
+        return await client.request(method, path, timeout=10.0)
+
+
+@app.get("/api/service/status")
+async def service_status(request: Request):
+    require_auth(request)
+    try:
+        r = await _docker("GET", f"/containers/{USERBOT_CONTAINER}/json")
+        if r.status_code == 200:
+            state = r.json().get("State", {})
+            return {"running": state.get("Running", False), "status": state.get("Status", "unknown")}
+        return {"running": False, "status": "not_found"}
+    except Exception:
+        return {"running": False, "status": "error"}
+
+
+@app.post("/api/service/start")
+async def service_start(request: Request):
+    require_auth(request)
+    r = await _docker("POST", f"/containers/{USERBOT_CONTAINER}/start")
+    if r.status_code in (204, 304):
+        return {"ok": True}
+    raise HTTPException(status_code=500, detail="Не удалось запустить сервис")
+
+
+@app.post("/api/service/stop")
+async def service_stop(request: Request):
+    require_auth(request)
+    r = await _docker("POST", f"/containers/{USERBOT_CONTAINER}/stop")
+    if r.status_code in (204, 304):
+        return {"ok": True}
+    raise HTTPException(status_code=500, detail="Не удалось остановить сервис")
 
 
 # ── Static & page routes ──────────────────────────────────────────────────────

@@ -151,6 +151,9 @@
     <div class="toolbar fade-up">
       <div class="accounts-count" id="accountsCount">Загрузка...</div>
       <div class="toolbar-actions">
+        <button class="btn btn-ghost btn-sm" id="serviceToggleBtn" style="min-width:110px">
+          <span id="serviceToggleLabel">...</span>
+        </button>
         <button class="btn btn-ghost btn-sm" id="refreshBtn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M23 4v6h-6M1 20v-6h6"/>
@@ -418,6 +421,50 @@
     }
 
     $('refreshBtn').addEventListener('click', loadAccounts);
+
+    // ── Service toggle ────────────────────────────────────────────────────────
+    let serviceRunning = null;
+
+    async function loadServiceStatus() {
+      try {
+        const s = await api('GET', '/api/service/status');
+        serviceRunning = s.running;
+        const btn = $('serviceToggleBtn');
+        const lbl = $('serviceToggleLabel');
+        if (s.running) {
+          lbl.innerHTML = '<span style="color:#22c55e">● Сервис</span> — Стоп';
+          btn.classList.remove('btn-primary');
+        } else {
+          lbl.innerHTML = '<span style="color:#ef4444">● Сервис</span> — Старт';
+          btn.classList.add('btn-primary');
+        }
+      } catch {
+        $('serviceToggleLabel').textContent = 'Сервис ?';
+      }
+    }
+
+    $('serviceToggleBtn').addEventListener('click', async () => {
+      $('serviceToggleBtn').disabled = true;
+      $('serviceToggleLabel').textContent = '...';
+      try {
+        if (serviceRunning) {
+          await api('POST', '/api/service/stop');
+          toast('Сервис остановлен', 'ok');
+        } else {
+          await api('POST', '/api/service/start');
+          toast('Сервис запущен', 'ok');
+        }
+        await new Promise(r => setTimeout(r, 1500));
+        await loadServiceStatus();
+      } catch (e) {
+        toast(e.message, 'err');
+        await loadServiceStatus();
+      } finally {
+        $('serviceToggleBtn').disabled = false;
+      }
+    });
+
+    loadServiceStatus();
 
     // ── Phone modal ──────────────────────────────────────────────────────────
     let currentAccId = null;
