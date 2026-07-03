@@ -15,9 +15,6 @@ pm2 restart portal
 echo "==> Перезапускаем userbot"
 pm2 restart userbot
 
-echo "==> Проверяем nginx"
-nginx -t && systemctl reload nginx
-
 echo ""
 echo "Готово. Статус:"
 pm2 list --no-color
