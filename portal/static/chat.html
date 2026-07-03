@@ -263,10 +263,6 @@
     <div class="sidebar">
       <div class="sidebar-search">
         <input id="searchInput" class="search-input" type="text" placeholder="Поиск по имени...">
-        <label style="display:flex;align-items:center;gap:7px;margin-top:8px;cursor:pointer;font-size:12px;color:var(--text-2)">
-          <input type="checkbox" id="onlySentChk" style="accent-color:var(--primary);width:14px;height:14px;cursor:pointer">
-          Только с отправкой
-        </label>
       </div>
       <div class="dialogs-list" id="dialogsList">
         <div style="padding:40px;text-align:center;color:var(--text-3);font-size:13px">Выберите аккаунт</div>
@@ -365,9 +361,8 @@ document.getElementById('refreshDialogsBtn').addEventListener('click', () => {
 
 // ── Dialogs ────────────────────────────────────────────────────────────────
 async function loadDialogs() {
-  const onlySent = document.getElementById('onlySentChk').checked;
   try {
-    allDialogs = await api('GET', `/api/accounts/${currentAccount}/dialogs?limit=50&only_sent=${onlySent}`);
+    allDialogs = await api('GET', `/api/accounts/${currentAccount}/dialogs?limit=50`);
     renderDialogs();
   } catch (e) {
     document.getElementById('dialogsList').innerHTML =
@@ -405,7 +400,6 @@ function renderDialogs() {
 }
 
 document.getElementById('searchInput').addEventListener('input', renderDialogs);
-document.getElementById('onlySentChk').addEventListener('change', () => loadDialogs());
 
 // ── Open dialog ────────────────────────────────────────────────────────────
 window.openDialog = async function(idx) {

@@ -639,18 +639,15 @@ class AccountManager:
     #  Статус аккаунтов                                                    #
     # ------------------------------------------------------------------ #
 
-    async def get_dialogs(self, account_id: str, limit: int = 30, only_sent: bool = False) -> list[dict]:
+    async def get_dialogs(self, account_id: str, limit: int = 30) -> list[dict]:
         if account_id not in self.clients:
             raise ValueError(f"Аккаунт '{account_id}' не найден")
         if not self.authorized.get(account_id):
             raise ValueError(f"Аккаунт '{account_id}' не авторизован")
         client = self.clients[account_id]
-        sent = self._sent_chats.get(account_id, set())
         dialogs = await client.get_dialogs(limit=limit)
         result = []
         for d in dialogs:
-            if only_sent and d.id not in sent:
-                continue
             entity = d.entity
             last_msg = d.message
             result.append({
