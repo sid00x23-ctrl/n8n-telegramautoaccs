@@ -9,11 +9,11 @@ echo "==> git pull"
 cd "$REPO_DIR"
 git pull
 
-echo "==> Перезапускаем portal"
-pm2 restart portal
+echo "==> Перезапускаем portal (с обновлением env)"
+pm2 startOrRestart /opt/clients/client1/ecosystem.config.js --only portal
 
-echo "==> Перезапускаем userbot"
-pm2 restart userbot
+echo "==> Перезапускаем userbot (с обновлением env)"
+pm2 startOrRestart /opt/clients/client1/ecosystem.config.js --only userbot
 
 echo ""
 echo "Готово. Статус:"
