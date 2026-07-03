@@ -24,7 +24,8 @@ from models import AccountConfig
 
 logger = logging.getLogger(__name__)
 
-CONFIGS_FILE = Path("accounts_config.json")
+CONFIGS_FILE    = Path("accounts_config.json")
+SENT_CHATS_FILE = Path("sent_chats.json")
 
 
 class AccountManager:
@@ -39,6 +40,9 @@ class AccountManager:
         # account_id → {"phone_code_hash": str, "phone": str}
         self._auth_state: dict[str, dict] = {}
 
+        # account_id → set of chat_ids успешно отправленных сообщений
+        self._sent_chats: dict[str, set[int]] = {}
+
         # Глобальная очередь приветствий (rate-limited отправки)
         self._greeting_queue: asyncio.Queue = asyncio.Queue()
         self._greeting_worker_task: Optional[asyncio.Task] = None
@@ -46,6 +50,7 @@ class AccountManager:
         self._greeting_interval: float = 180.0  # секунд между приветствиями
 
         self._load_configs()
+        self._load_sent_chats()
 
     # ------------------------------------------------------------------ #
     #  Инициализация                                                       #
@@ -62,6 +67,16 @@ class AccountManager:
     def _save_configs(self):
         data = [cfg.model_dump(mode='json') for cfg in self.configs.values()]
         CONFIGS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+
+    def _load_sent_chats(self):
+        if SENT_CHATS_FILE.exists():
+            raw = json.loads(SENT_CHATS_FILE.read_text())
+            self._sent_chats = {acc: set(ids) for acc, ids in raw.items()}
+            logger.info(f"Загружено sent_chats для {len(self._sent_chats)} аккаунтов")
+
+    def _save_sent_chats(self):
+        raw = {acc: list(ids) for acc, ids in self._sent_chats.items()}
+        SENT_CHATS_FILE.write_text(json.dumps(raw, ensure_ascii=False))
 
     # ------------------------------------------------------------------ #
     #  Запуск / остановка                                                  #
@@ -528,6 +543,8 @@ class AccountManager:
             # 4. Отправляем
             await client.send_message(entity, text)
             await self._send_delivery_callback("sent", account_id, chat_id)
+            self._sent_chats.setdefault(account_id, set()).add(chat_id)
+            self._save_sent_chats()
             return {"status": "sent", "account_id": account_id, "chat_id": chat_id}
         except FloodWaitError as e:
             await self._send_delivery_callback("error", account_id, chat_id, f"FloodWait: {e.seconds} сек")
@@ -622,15 +639,18 @@ class AccountManager:
     #  Статус аккаунтов                                                    #
     # ------------------------------------------------------------------ #
 
-    async def get_dialogs(self, account_id: str, limit: int = 30) -> list[dict]:
+    async def get_dialogs(self, account_id: str, limit: int = 30, only_sent: bool = False) -> list[dict]:
         if account_id not in self.clients:
             raise ValueError(f"Аккаунт '{account_id}' не найден")
         if not self.authorized.get(account_id):
             raise ValueError(f"Аккаунт '{account_id}' не авторизован")
         client = self.clients[account_id]
+        sent = self._sent_chats.get(account_id, set())
         dialogs = await client.get_dialogs(limit=limit)
         result = []
         for d in dialogs:
+            if only_sent and d.id not in sent:
+                continue
             entity = d.entity
             last_msg = d.message
             result.append({
