@@ -457,7 +457,7 @@ async function loadAccounts() {
       authorizedAccounts.map(a =>
         `<option value="${a.account_id}">${a.name || a.account_id}${a.username ? ' · @' + a.username : ''}</option>`
       ).join('');
-    await selectAccount(authorizedAccounts[0].account_id);
+    await selectAccount('__all__');
   } catch (e) {
     toast('Ошибка загрузки аккаунтов: ' + e.message, 'err');
   }
