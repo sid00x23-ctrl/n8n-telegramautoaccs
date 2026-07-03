@@ -636,6 +636,40 @@ class AccountManager:
             raise ValueError(f"Ошибка реакции: {e}") from e
 
     # ------------------------------------------------------------------ #
+    #  Удаление / редактирование сообщений                                 #
+    # ------------------------------------------------------------------ #
+
+    async def delete_message(self, account_id: str, chat_id: int, message_id: int) -> dict:
+        """Удалить сообщение для всех (revoke=True)."""
+        if account_id not in self.clients:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        if not self.authorized.get(account_id):
+            raise ValueError(f"Аккаунт '{account_id}' не авторизован")
+        client = self.clients[account_id]
+        try:
+            entity = await client.get_entity(chat_id)
+        except Exception:
+            entity = chat_id
+        await client.delete_messages(entity, [message_id], revoke=True)
+        logger.info(f"[{account_id}] Сообщение {message_id} удалено для всех в чате {chat_id}")
+        return {"status": "deleted", "message_id": message_id}
+
+    async def edit_message(self, account_id: str, chat_id: int, message_id: int, text: str) -> dict:
+        """Редактировать отправленное сообщение."""
+        if account_id not in self.clients:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        if not self.authorized.get(account_id):
+            raise ValueError(f"Аккаунт '{account_id}' не авторизован")
+        client = self.clients[account_id]
+        try:
+            entity = await client.get_entity(chat_id)
+        except Exception:
+            entity = chat_id
+        await client.edit_message(entity, message_id, text)
+        logger.info(f"[{account_id}] Сообщение {message_id} отредактировано в чате {chat_id}")
+        return {"status": "edited", "message_id": message_id, "text": text}
+
+    # ------------------------------------------------------------------ #
     #  Статус аккаунтов                                                    #
     # ------------------------------------------------------------------ #
 

@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 from typing import Optional
 
 from manager import AccountManager
-from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest
+from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest
 
 
 def create_app(manager: AccountManager) -> FastAPI:
@@ -120,6 +120,20 @@ def create_app(manager: AccountManager) -> FastAPI:
     async def get_messages(account_id: str, chat_id: int, limit: int = 50, offset_id: int = 0):
         try:
             return await manager.get_messages(account_id, chat_id, limit, offset_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.delete("/accounts/{account_id}/dialogs/{chat_id}/messages/{message_id}", tags=["messaging"])
+    async def delete_message(account_id: str, chat_id: int, message_id: int):
+        try:
+            return await manager.delete_message(account_id, chat_id, message_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.patch("/accounts/{account_id}/dialogs/{chat_id}/messages/{message_id}", tags=["messaging"])
+    async def edit_message(account_id: str, chat_id: int, message_id: int, body: EditMessageRequest):
+        try:
+            return await manager.edit_message(account_id, chat_id, message_id, body.text)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 

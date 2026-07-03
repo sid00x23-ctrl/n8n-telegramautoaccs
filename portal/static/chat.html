@@ -228,6 +228,79 @@
       display: flex; align-items: center;
     }
     .refresh-btn:hover { color: var(--primary); border-color: var(--primary); }
+
+    /* ── Message wrappers with hover actions ── */
+    .msg-wrapper {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    .msg-wrapper.out {
+      align-self: flex-end;
+      flex-direction: row;
+      max-width: 72%;
+    }
+    .msg-wrapper.in {
+      align-self: flex-start;
+      max-width: 68%;
+    }
+    .msg-wrapper .msg {
+      align-self: unset;
+      max-width: 100%;
+    }
+
+    .msg-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      opacity: 0;
+      transition: opacity .15s;
+      flex-shrink: 0;
+    }
+    .msg-wrapper:hover .msg-actions { opacity: 1; }
+
+    .msg-action-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-2);
+      width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: color .15s, border-color .15s, background .15s;
+      padding: 0;
+    }
+    .msg-action-btn:hover { color: var(--primary); border-color: var(--primary); background: rgba(0,212,255,0.08); }
+    .msg-action-btn.del:hover { color: #ff4d4d; border-color: #ff4d4d; background: rgba(255,77,77,0.08); }
+
+    /* ── Inline edit mode ── */
+    .msg-edit-wrap { display: flex; flex-direction: column; gap: 6px; }
+    .msg-edit-textarea {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--primary);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: var(--font);
+      padding: 8px 12px;
+      resize: none;
+      min-height: 60px;
+      outline: none;
+      line-height: 1.5;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .msg-edit-btns { display: flex; gap: 6px; justify-content: flex-end; }
+    .msg-edit-save {
+      background: var(--primary); color: #000;
+      border: none; border-radius: 6px;
+      padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .msg-edit-cancel {
+      background: var(--surface); color: var(--text-2);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 4px 12px; font-size: 12px; cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -455,12 +528,32 @@ function renderMessages(msgs, scrollToBottom) {
     return;
   }
 
-  body.innerHTML = msgs.map(m => `
-    <div class="msg ${m.out ? 'out' : 'in'}">
-      <div>${esc(m.text)}</div>
-      <div class="msg-time">${fmtDateTime(m.date)}</div>
-    </div>
-  `).join('');
+  body.innerHTML = msgs.map(m => {
+    const inner = `<div>${esc(m.text)}</div><div class="msg-time">${fmtDateTime(m.date)}</div>`;
+    if (m.out) {
+      return `<div class="msg-wrapper out" data-msg-id="${m.id}" data-msg-text="${m.text.replace(/"/g, '&quot;')}">
+        <div class="msg-actions">
+          <button class="msg-action-btn" onclick="editMsg(${m.id})" title="Редактировать">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+          <button class="msg-action-btn del" onclick="deleteMsg(${m.id})" title="Удалить для всех">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+            </svg>
+          </button>
+        </div>
+        <div class="msg out" id="msg_${m.id}">${inner}</div>
+      </div>`;
+    } else {
+      return `<div class="msg-wrapper in">
+        <div class="msg in">${inner}</div>
+      </div>`;
+    }
+  }).join('');
 
   if (scrollToBottom || (wasAtBottom && hasNew)) {
     body.scrollTop = body.scrollHeight;
@@ -526,6 +619,62 @@ function fmtDateTime(iso) {
   const d = new Date(iso);
   return d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
 }
+
+// ── Edit / Delete messages ─────────────────────────────────────────────────
+window.editMsg = function(msgId) {
+  const wrapper = document.querySelector(`.msg-wrapper[data-msg-id="${msgId}"]`);
+  if (!wrapper) return;
+  const msgDiv = document.getElementById(`msg_${msgId}`);
+  const currentText = wrapper.dataset.msgText;
+
+  msgDiv.innerHTML = `
+    <div class="msg-edit-wrap">
+      <textarea class="msg-edit-textarea" id="editTa_${msgId}">${currentText.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
+      <div class="msg-edit-btns">
+        <button class="msg-edit-cancel" onclick="cancelEdit()">Отмена</button>
+        <button class="msg-edit-save" onclick="saveEdit(${msgId})">Сохранить</button>
+      </div>
+    </div>`;
+  const ta = document.getElementById(`editTa_${msgId}`);
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(msgId); }
+    if (e.key === 'Escape') cancelEdit();
+  });
+};
+
+window.cancelEdit = function() {
+  loadMessages(false);
+};
+
+window.saveEdit = async function(msgId) {
+  const ta = document.getElementById(`editTa_${msgId}`);
+  if (!ta) return;
+  const newText = ta.value.trim();
+  if (!newText) return;
+  ta.disabled = true;
+  try {
+    await api('PATCH',
+      `/api/accounts/${currentAccount}/dialogs/${currentChat.id}/messages/${msgId}`,
+      { text: newText });
+    await loadMessages(false);
+  } catch (e) {
+    toast('Ошибка редактирования: ' + e.message, 'err');
+    ta.disabled = false;
+  }
+};
+
+window.deleteMsg = async function(msgId) {
+  if (!confirm('Удалить сообщение для всех?')) return;
+  try {
+    await api('DELETE',
+      `/api/accounts/${currentAccount}/dialogs/${currentChat.id}/messages/${msgId}`);
+    await loadMessages(false);
+  } catch (e) {
+    toast('Ошибка удаления: ' + e.message, 'err');
+  }
+};
 
 // ── Init ───────────────────────────────────────────────────────────────────
 loadAccounts();

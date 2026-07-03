@@ -250,6 +250,19 @@ async def proxy_chat_send(account_id: str, chat_id: int, request: Request):
     }, timeout=30.0)
 
 
+@app.delete("/api/accounts/{account_id}/dialogs/{chat_id}/messages/{message_id}")
+async def proxy_delete_message(account_id: str, chat_id: int, message_id: int, request: Request):
+    require_auth(request)
+    return await _proxy("DELETE", f"/accounts/{account_id}/dialogs/{chat_id}/messages/{message_id}")
+
+
+@app.patch("/api/accounts/{account_id}/dialogs/{chat_id}/messages/{message_id}")
+async def proxy_edit_message(account_id: str, chat_id: int, message_id: int, request: Request):
+    require_auth(request)
+    body = await request.json()
+    return await _proxy("PATCH", f"/accounts/{account_id}/dialogs/{chat_id}/messages/{message_id}", json_body=body)
+
+
 @app.delete("/api/accounts/{account_id}")
 async def delete_account(account_id: str, request: Request):
     require_auth(request)

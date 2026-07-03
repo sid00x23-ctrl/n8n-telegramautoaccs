@@ -21,6 +21,10 @@ class AuthCompleteRequest(BaseModel):
     password: Optional[str] = None  # пароль 2FA (если включён)
 
 
+class EditMessageRequest(BaseModel):
+    text: str
+
+
 class ReactRequest(BaseModel):
     account_id: str
     chat_id: int
