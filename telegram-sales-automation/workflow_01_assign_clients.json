@@ -113,7 +113,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $vars.USERBOT_URL }}/accounts",
+        "url": "http://userbot:8000/accounts",
         "options": {}
       },
       "id": "get-accounts-001",

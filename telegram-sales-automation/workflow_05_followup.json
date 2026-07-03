@@ -29,7 +29,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.USERBOT_URL }}/send",
+        "url": "http://userbot:8000/send",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
