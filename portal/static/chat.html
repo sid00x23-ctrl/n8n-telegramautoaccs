@@ -556,9 +556,11 @@ async function loadDialogs() {
     }
 
     if (allAccountsMode) {
+      // В режиме "Из таблицы" грузим все диалоги (sent_only=false), иначе только приветствованных
+      const sentOnly = filterMode !== 'sheet';
       const results = await Promise.all(
         authorizedAccounts.map(a =>
-          api('GET', `/api/accounts/${a.account_id}/dialogs?limit=200&sent_only=true`)
+          api('GET', `/api/accounts/${a.account_id}/dialogs?limit=200&sent_only=${sentOnly}`)
             .then(dialogs => {
               console.log(`[loadDialogs] ${a.account_id}: ${dialogs.length} dialogs`);
               return dialogs.map(d => ({
