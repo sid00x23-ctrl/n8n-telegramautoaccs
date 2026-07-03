@@ -622,10 +622,17 @@ function fmtDateTime(iso) {
 
 // ── Edit / Delete messages ─────────────────────────────────────────────────
 window.editMsg = function(msgId) {
+  // Остановить поллинг — иначе перерисовка через 5 сек уничтожит форму
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+
   const wrapper = document.querySelector(`.msg-wrapper[data-msg-id="${msgId}"]`);
   if (!wrapper) return;
   const msgDiv = document.getElementById(`msg_${msgId}`);
   const currentText = wrapper.dataset.msgText;
+
+  // Скрыть кнопки действий пока открыта форма
+  const actionsEl = wrapper.querySelector('.msg-actions');
+  if (actionsEl) actionsEl.style.visibility = 'hidden';
 
   msgDiv.innerHTML = `
     <div class="msg-edit-wrap">
@@ -644,8 +651,14 @@ window.editMsg = function(msgId) {
   });
 };
 
-window.cancelEdit = function() {
-  loadMessages(false);
+function restartPoll() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = currentChat ? setInterval(() => loadMessages(false), 5000) : null;
+}
+
+window.cancelEdit = async function() {
+  await loadMessages(false);
+  restartPoll();
 };
 
 window.saveEdit = async function(msgId) {
@@ -659,6 +672,7 @@ window.saveEdit = async function(msgId) {
       `/api/accounts/${currentAccount}/dialogs/${currentChat.id}/messages/${msgId}`,
       { text: newText });
     await loadMessages(false);
+    restartPoll();
   } catch (e) {
     toast('Ошибка редактирования: ' + e.message, 'err');
     ta.disabled = false;
