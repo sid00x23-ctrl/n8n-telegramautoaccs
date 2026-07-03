@@ -2,6 +2,8 @@
 Portal — веб-интерфейс управления клиентом.
 Предоставляет: вход по логину/паролю, выбор n8n или сервиса, управление аккаунтами.
 """
+import asyncio
+import json
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -21,8 +23,7 @@ PORTAL_PASSWORD = os.getenv("PORTAL_PASSWORD", "")
 JWT_SECRET = os.getenv("JWT_SECRET", "change-me-please")
 JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
 USERBOT_API_URL = os.getenv("USERBOT_API_URL", "http://userbot:8000")
-USERBOT_CONTAINER = os.getenv("USERBOT_CONTAINER", "client1-userbot-1")
-DOCKER_SOCKET = "/var/run/docker.sock"
+PM2_USERBOT_NAME = os.getenv("PM2_USERBOT_NAME", "userbot")
 N8N_URL = os.getenv("N8N_URL", "")
 N8N_INTERNAL_URL = os.getenv("N8N_INTERNAL_URL", "http://n8n:5678")
 N8N_OWNER_EMAIL = os.getenv("N8N_OWNER_EMAIL", "")
@@ -269,32 +270,44 @@ async def delete_account(account_id: str, request: Request):
     return await _proxy("DELETE", f"/accounts/{account_id}")
 
 
-# ── Docker control (userbot start/stop) ───────────────────────────────────────
+# ── PM2 control (userbot start/stop) ──────────────────────────────────────────
 
-async def _docker(method: str, path: str):
-    transport = httpx.AsyncHTTPTransport(uds=DOCKER_SOCKET)
-    async with httpx.AsyncClient(transport=transport, base_url="http://docker") as client:
-        return await client.request(method, path, timeout=10.0)
+async def _pm2_status(name: str) -> dict:
+    proc = await asyncio.create_subprocess_exec(
+        "pm2", "jlist",
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+    stdout, _ = await proc.communicate()
+    if proc.returncode != 0:
+        return {"running": False, "status": "error"}
+    processes = json.loads(stdout.decode())
+    p = next((x for x in processes if x["name"] == name), None)
+    if not p:
+        return {"running": False, "status": "not_found"}
+    status = p["pm2_env"]["status"]
+    return {"running": status == "online", "status": status}
+
+
+async def _pm2_action(action: str, name: str) -> bool:
+    proc = await asyncio.create_subprocess_exec(
+        "pm2", action, name,
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+    await proc.communicate()
+    return proc.returncode == 0
 
 
 @app.get("/api/service/status")
 async def service_status(request: Request):
     require_auth(request)
-    try:
-        r = await _docker("GET", f"/containers/{USERBOT_CONTAINER}/json")
-        if r.status_code == 200:
-            state = r.json().get("State", {})
-            return {"running": state.get("Running", False), "status": state.get("Status", "unknown")}
-        return {"running": False, "status": "not_found"}
-    except Exception:
-        return {"running": False, "status": "error"}
+    return await _pm2_status(PM2_USERBOT_NAME)
 
 
 @app.post("/api/service/start")
 async def service_start(request: Request):
     require_auth(request)
-    r = await _docker("POST", f"/containers/{USERBOT_CONTAINER}/start")
-    if r.status_code in (204, 304):
+    ok = await _pm2_action("restart", PM2_USERBOT_NAME)
+    if ok:
         return {"ok": True}
     raise HTTPException(status_code=500, detail="Не удалось запустить сервис")
 
@@ -302,8 +315,8 @@ async def service_start(request: Request):
 @app.post("/api/service/stop")
 async def service_stop(request: Request):
     require_auth(request)
-    r = await _docker("POST", f"/containers/{USERBOT_CONTAINER}/stop")
-    if r.status_code in (204, 304):
+    ok = await _pm2_action("stop", PM2_USERBOT_NAME)
+    if ok:
         return {"ok": True}
     raise HTTPException(status_code=500, detail="Не удалось остановить сервис")
 
