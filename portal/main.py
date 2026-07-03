@@ -276,9 +276,11 @@ async def delete_account(account_id: str, request: Request):
 async def resend_to_n8n(request: Request):
     require_auth(request)
     body = await request.json()
+    account_id = body["account_id"]
+    chat_id = body["chat_id"]
     payload = {
-        "account_id": body["account_id"],
-        "chat_id": body["chat_id"],
+        "account_id": account_id,
+        "chat_id": chat_id,
         "message_id": body["message_id"],
         "from_user_id": body.get("from_user_id"),
         "from_username": body.get("from_username"),
@@ -294,6 +296,10 @@ async def resend_to_n8n(request: Request):
         raise HTTPException(status_code=502, detail="n8n недоступен")
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=502, detail=f"n8n вернул {e.response.status_code}")
+
+    # Помечаем чат как прочитанный
+    await _proxy("POST", f"/accounts/{account_id}/dialogs/{chat_id}/read")
+
     return {"ok": True}
 
 

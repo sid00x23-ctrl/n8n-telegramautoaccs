@@ -123,6 +123,14 @@ def create_app(manager: AccountManager) -> FastAPI:
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
+    @app.post("/accounts/{account_id}/dialogs/{chat_id}/read", tags=["messaging"])
+    async def mark_read(account_id: str, chat_id: int):
+        try:
+            await manager.mark_read(account_id, chat_id)
+            return {"ok": True}
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
     @app.delete("/accounts/{account_id}/dialogs/{chat_id}/messages/{message_id}", tags=["messaging"])
     async def delete_message(account_id: str, chat_id: int, message_id: int):
         try:

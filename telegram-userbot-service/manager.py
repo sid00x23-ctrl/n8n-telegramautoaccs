@@ -724,6 +724,18 @@ class AccountManager:
             })
         return result
 
+    async def mark_read(self, account_id: str, chat_id: int) -> None:
+        if account_id not in self.clients:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        if not self.authorized.get(account_id):
+            raise ValueError(f"Аккаунт '{account_id}' не авторизован")
+        client = self.clients[account_id]
+        try:
+            entity = await client.get_entity(chat_id)
+        except Exception:
+            entity = chat_id
+        await client.send_read_acknowledge(entity)
+
     def get_status(self) -> list[dict]:
         result = []
         now = datetime.now(timezone.utc)
