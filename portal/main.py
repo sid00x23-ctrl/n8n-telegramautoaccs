@@ -226,6 +226,30 @@ async def auth_qr_wait(account_id: str, request: Request):
     return await _proxy("POST", path, timeout=35.0)
 
 
+@app.get("/api/accounts/{account_id}/dialogs")
+async def proxy_dialogs(account_id: str, request: Request, limit: int = 30):
+    require_auth(request)
+    return await _proxy("GET", f"/accounts/{account_id}/dialogs?limit={limit}", timeout=30.0)
+
+
+@app.get("/api/accounts/{account_id}/dialogs/{chat_id}/messages")
+async def proxy_messages(account_id: str, chat_id: int, request: Request, limit: int = 50, offset_id: int = 0):
+    require_auth(request)
+    return await _proxy("GET", f"/accounts/{account_id}/dialogs/{chat_id}/messages?limit={limit}&offset_id={offset_id}", timeout=30.0)
+
+
+@app.post("/api/accounts/{account_id}/dialogs/{chat_id}/send")
+async def proxy_chat_send(account_id: str, chat_id: int, request: Request):
+    require_auth(request)
+    body = await request.json()
+    return await _proxy("POST", "/send", json_body={
+        "account_id": account_id,
+        "chat_id": chat_id,
+        "text": body.get("text", ""),
+        "instant": True,
+    }, timeout=30.0)
+
+
 @app.delete("/api/accounts/{account_id}")
 async def delete_account(account_id: str, request: Request):
     require_auth(request)
@@ -289,3 +313,8 @@ async def dashboard():
 @app.get("/service", response_class=HTMLResponse)
 async def service():
     return FileResponse(STATIC_DIR / "service.html")
+
+
+@app.get("/chat", response_class=HTMLResponse)
+async def chat_page():
+    return FileResponse(STATIC_DIR / "chat.html")

@@ -55,7 +55,7 @@
     }
     .content {
       width: 100%;
-      max-width: 760px;
+      max-width: 1040px;
       padding: 40px 24px;
     }
 
@@ -76,10 +76,13 @@
 
     .cards-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 20px;
     }
-    @media (max-width: 580px) {
+    @media (max-width: 860px) {
+      .cards-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 560px) {
       .cards-grid { grid-template-columns: 1fr; }
     }
 
@@ -118,6 +121,12 @@
     .card-n8n::before { background: radial-gradient(circle at 50% 0%, rgba(168,85,247,0.06) 0%, transparent 70%); }
     .card-n8n:hover { box-shadow: 0 12px 40px rgba(168,85,247,0.12), var(--shadow); }
     .card-n8n .card-icon-wrap { background: var(--purple-dim); border-color: rgba(168,85,247,0.2); }
+
+    /* chat card — green glow */
+    .card-chat::before { background: radial-gradient(circle at 50% 0%, rgba(34,197,94,0.06) 0%, transparent 70%); }
+    .card-chat:hover { box-shadow: 0 12px 40px rgba(34,197,94,0.12), var(--shadow); }
+    .card-chat .card-icon-wrap { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.25); }
+    .card-chat:hover .card-arrow { color: var(--success); }
 
     .card-icon-wrap {
       width: 56px; height: 56px;
@@ -210,7 +219,25 @@
           </div>
         </a>
 
-        <a href="/n8n/" class="card choice-card card-n8n fade-up delay-2" id="n8nCard">
+        <a href="/chat" class="card choice-card card-chat fade-up delay-2">
+          <div class="card-icon-wrap">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-title">Диалоги</div>
+            <div class="card-desc">Просмотр переписки и отправка сообщений через Telegram-аккаунты</div>
+          </div>
+          <div class="card-arrow">
+            Открыть
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 8h10M9 4l4 4-4 4"/>
+            </svg>
+          </div>
+        </a>
+
+        <a href="/n8n/" class="card choice-card card-n8n fade-up delay-3" id="n8nCard">
           <div class="card-icon-wrap">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <rect x="2" y="7" width="4" height="10" rx="2"/>

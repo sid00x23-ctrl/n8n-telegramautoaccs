@@ -109,6 +109,20 @@ def create_app(manager: AccountManager) -> FastAPI:
             raise HTTPException(status_code=400, detail=result["message"])
         return result
 
+    @app.get("/accounts/{account_id}/dialogs", tags=["messaging"])
+    async def get_dialogs(account_id: str, limit: int = 30):
+        try:
+            return await manager.get_dialogs(account_id, limit)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.get("/accounts/{account_id}/dialogs/{chat_id}/messages", tags=["messaging"])
+    async def get_messages(account_id: str, chat_id: int, limit: int = 50, offset_id: int = 0):
+        try:
+            return await manager.get_messages(account_id, chat_id, limit, offset_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
     @app.delete("/accounts/{account_id}", tags=["system"])
     async def delete_account(account_id: str):
         """

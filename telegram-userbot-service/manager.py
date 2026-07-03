@@ -622,6 +622,54 @@ class AccountManager:
     #  Статус аккаунтов                                                    #
     # ------------------------------------------------------------------ #
 
+    async def get_dialogs(self, account_id: str, limit: int = 30) -> list[dict]:
+        if account_id not in self.clients:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        if not self.authorized.get(account_id):
+            raise ValueError(f"Аккаунт '{account_id}' не авторизован")
+        client = self.clients[account_id]
+        dialogs = await client.get_dialogs(limit=limit)
+        result = []
+        for d in dialogs:
+            entity = d.entity
+            last_msg = d.message
+            result.append({
+                "id": d.id,
+                "name": d.name or str(d.id),
+                "username": getattr(entity, "username", None),
+                "unread_count": d.unread_count,
+                "last_message": {
+                    "text": (last_msg.text or "")[:120],
+                    "date": last_msg.date.isoformat(),
+                    "out": last_msg.out,
+                } if last_msg else None,
+            })
+        return result
+
+    async def get_messages(self, account_id: str, chat_id: int, limit: int = 50, offset_id: int = 0) -> list[dict]:
+        if account_id not in self.clients:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        if not self.authorized.get(account_id):
+            raise ValueError(f"Аккаунт '{account_id}' не авторизован")
+        client = self.clients[account_id]
+        try:
+            entity = await client.get_entity(chat_id)
+        except Exception:
+            entity = chat_id
+        kwargs: dict = {"limit": limit}
+        if offset_id:
+            kwargs["offset_id"] = offset_id
+        msgs = await client.get_messages(entity, **kwargs)
+        result = []
+        for m in reversed(list(msgs)):
+            result.append({
+                "id": m.id,
+                "text": m.text or "",
+                "date": m.date.isoformat(),
+                "out": m.out,
+            })
+        return result
+
     def get_status(self) -> list[dict]:
         result = []
         now = datetime.now(timezone.utc)

@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BotRassilka — Диалоги</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <style>
+    html, body { height: 100%; overflow: hidden; }
+
+    .layout { display: flex; flex-direction: column; height: 100vh; }
+
+    .header {
+      height: 60px;
+      background: rgba(8,8,15,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      flex-shrink: 0;
+      z-index: 10;
+      position: relative;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .back-btn {
+      display: flex; align-items: center; gap: 6px;
+      color: var(--text-2); text-decoration: none; font-size: 14px;
+      transition: color .2s;
+    }
+    .back-btn:hover { color: var(--text); }
+
+    .chat-wrap {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      background: rgba(8,8,15,0.5);
+    }
+    .sidebar-search {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .search-input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 7px 12px;
+      font-size: 13px;
+      font-family: var(--font);
+      outline: none;
+      transition: border-color .2s;
+    }
+    .search-input:focus { border-color: var(--primary); }
+
+    .dialogs-list { flex: 1; overflow-y: auto; }
+    .dialogs-list::-webkit-scrollbar { width: 4px; }
+    .dialogs-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .dialog-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background .12s;
+    }
+    .dialog-item:hover { background: var(--surface); }
+    .dialog-item.active { background: var(--primary-dim); border-left: 2px solid var(--primary); padding-left: 12px; }
+
+    .d-avatar {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: var(--grad);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 700;
+      flex-shrink: 0; color: #fff;
+      text-transform: uppercase;
+    }
+    .d-info { flex: 1; min-width: 0; }
+    .d-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .d-preview { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .d-meta { text-align: right; flex-shrink: 0; }
+    .d-time { font-size: 11px; color: var(--text-3); }
+    .d-badge {
+      display: inline-block;
+      background: var(--primary); color: #000;
+      border-radius: 10px;
+      font-size: 10px; font-weight: 700;
+      padding: 1px 5px;
+      margin-top: 3px;
+    }
+
+    /* ── Messages panel ── */
+    .messages-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-empty {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-3);
+      font-size: 15px;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .chat-empty .icon { font-size: 48px; opacity: .25; }
+
+    .chat-active { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+    .chat-active.visible { display: flex; }
+
+    .chat-header {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .chat-header-info .ch-name { font-size: 15px; font-weight: 600; }
+    .chat-header-info .ch-sub { font-size: 12px; color: var(--text-2); margin-top: 1px; }
+
+    .messages-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .messages-body::-webkit-scrollbar { width: 4px; }
+    .messages-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .msg {
+      max-width: 68%;
+      padding: 8px 12px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .msg.out {
+      align-self: flex-end;
+      background: rgba(0,212,255,0.12);
+      border: 1px solid rgba(0,212,255,0.2);
+      border-bottom-right-radius: 4px;
+    }
+    .msg.in {
+      align-self: flex-start;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .msg-time {
+      font-size: 10px;
+      color: var(--text-3);
+      margin-top: 3px;
+      text-align: right;
+    }
+    .msg.in .msg-time { text-align: left; }
+
+    .msg-input-wrap {
+      padding: 12px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+    .msg-textarea {
+      flex: 1;
+      resize: none;
+      min-height: 40px;
+      max-height: 120px;
+      padding: 9px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: var(--font);
+      outline: none;
+      transition: border-color .2s;
+      line-height: 1.4;
+    }
+    .msg-textarea:focus { border-color: var(--primary); }
+
+    .account-sel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 6px 10px;
+      font-size: 13px;
+      font-family: var(--font);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .refresh-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-2);
+      padding: 6px 10px;
+      cursor: pointer;
+      transition: color .2s, border-color .2s;
+      display: flex; align-items: center;
+    }
+    .refresh-btn:hover { color: var(--primary); border-color: var(--primary); }
+  </style>
+</head>
+<body>
+<div class="bg-mesh"></div>
+
+<div class="layout">
+  <header class="header">
+    <div class="header-left">
+      <a href="/dashboard" class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Назад
+      </a>
+      <span style="color:var(--border)">|</span>
+      <span style="font-size:16px;font-weight:600">Диалоги</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <select id="accountSel" class="account-sel">
+        <option value="">Загрузка...</option>
+      </select>
+      <button class="refresh-btn" id="refreshDialogsBtn" title="Обновить диалоги">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="chat-wrap">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-search">
+        <input id="searchInput" class="search-input" type="text" placeholder="Поиск по имени...">
+      </div>
+      <div class="dialogs-list" id="dialogsList">
+        <div style="padding:40px;text-align:center;color:var(--text-3);font-size:13px">Выберите аккаунт</div>
+      </div>
+    </div>
+
+    <!-- Messages panel -->
+    <div class="messages-panel">
+      <div class="chat-empty" id="chatEmpty">
+        <div class="icon">💬</div>
+        <span>Выберите диалог</span>
+      </div>
+
+      <div class="chat-active" id="chatActive">
+        <div class="chat-header">
+          <div class="d-avatar" id="chatAvatar" style="width:36px;height:36px;font-size:14px">?</div>
+          <div class="chat-header-info">
+            <div class="ch-name" id="chatName">—</div>
+            <div class="ch-sub" id="chatSub">—</div>
+          </div>
+          <button class="refresh-btn" onclick="loadMessages(true)" title="Обновить" style="margin-left:auto">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="messages-body" id="msgsBody"></div>
+
+        <div class="msg-input-wrap">
+          <textarea id="msgInput" class="msg-textarea" rows="1"
+            placeholder="Сообщение... (Enter — отправить, Shift+Enter — новая строка)"></textarea>
+          <button class="btn btn-primary" id="sendBtn" onclick="sendMsg()" style="height:40px;padding:0 14px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { guardAuth, api, toast } from '/static/js/api.js';
+
+await guardAuth().catch(() => null);
+
+let currentAccount = null;
+let currentChat    = null;
+let allDialogs     = [];
+let lastMsgId      = 0;
+let pollTimer      = null;
+
+// ── Accounts ───────────────────────────────────────────────────────────────
+async function loadAccounts() {
+  try {
+    const accounts = await api('GET', '/api/accounts');
+    const authed = accounts.filter(a => a.authorized);
+    const sel = document.getElementById('accountSel');
+    if (authed.length === 0) {
+      sel.innerHTML = '<option value="">Нет авторизованных аккаунтов</option>';
+      return;
+    }
+    sel.innerHTML = authed.map(a =>
+      `<option value="${a.account_id}">${a.name || a.account_id}${a.username ? ' · @' + a.username : ''}</option>`
+    ).join('');
+    await selectAccount(authed[0].account_id);
+  } catch (e) {
+    toast('Ошибка загрузки аккаунтов: ' + e.message, 'err');
+  }
+}
+
+async function selectAccount(id) {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  currentAccount = id;
+  currentChat    = null;
+  lastMsgId      = 0;
+  document.getElementById('chatEmpty').style.display = '';
+  document.getElementById('chatActive').classList.remove('visible');
+  document.getElementById('dialogsList').innerHTML =
+    '<div style="padding:40px;text-align:center;color:var(--text-3);font-size:13px">Загрузка диалогов...</div>';
+  await loadDialogs();
+}
+
+document.getElementById('accountSel').addEventListener('change', e => {
+  if (e.target.value) selectAccount(e.target.value);
+});
+
+document.getElementById('refreshDialogsBtn').addEventListener('click', () => {
+  if (currentAccount) loadDialogs();
+});
+
+// ── Dialogs ────────────────────────────────────────────────────────────────
+async function loadDialogs() {
+  try {
+    allDialogs = await api('GET', `/api/accounts/${currentAccount}/dialogs?limit=50`);
+    renderDialogs();
+  } catch (e) {
+    document.getElementById('dialogsList').innerHTML =
+      `<div style="padding:20px;color:var(--error);font-size:13px">${esc(e.message)}</div>`;
+  }
+}
+
+function renderDialogs() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const list = q ? allDialogs.filter(d => (d.name || '').toLowerCase().includes(q)) : allDialogs;
+  const el = document.getElementById('dialogsList');
+
+  if (list.length === 0) {
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-3);font-size:13px">Диалогов нет</div>';
+    return;
+  }
+
+  el.innerHTML = list.map((d, i) => {
+    const init = (d.name || '?')[0].toUpperCase();
+    const preview = d.last_message
+      ? (d.last_message.out ? '→ ' : '') + (d.last_message.text || '📎 Медиа')
+      : '';
+    const time  = d.last_message?.date ? fmtTime(d.last_message.date) : '';
+    const badge = d.unread_count > 0 ? `<div class="d-badge">${d.unread_count}</div>` : '';
+    const active = currentChat?.id === d.id ? 'active' : '';
+    return `<div class="dialog-item ${active}" data-idx="${i}" onclick="openDialog(${i})">
+      <div class="d-avatar">${esc(init)}</div>
+      <div class="d-info">
+        <div class="d-name">${esc(d.name || String(d.id))}</div>
+        <div class="d-preview">${esc(preview)}</div>
+      </div>
+      <div class="d-meta"><div class="d-time">${time}</div>${badge}</div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('searchInput').addEventListener('input', renderDialogs);
+
+// ── Open dialog ────────────────────────────────────────────────────────────
+window.openDialog = async function(idx) {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const list = q ? allDialogs.filter(d => (d.name || '').toLowerCase().includes(q)) : allDialogs;
+  const dialog = list[idx];
+  if (!dialog) return;
+
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  currentChat = dialog;
+  lastMsgId   = 0;
+
+  document.querySelectorAll('.dialog-item').forEach(el => el.classList.remove('active'));
+  document.querySelector(`[data-idx="${idx}"]`)?.classList.add('active');
+
+  document.getElementById('chatEmpty').style.display = 'none';
+  document.getElementById('chatActive').classList.add('visible');
+
+  document.getElementById('chatAvatar').textContent = (dialog.name || '?')[0].toUpperCase();
+  document.getElementById('chatName').textContent   = dialog.name || String(dialog.id);
+  document.getElementById('chatSub').textContent    = dialog.username
+    ? '@' + dialog.username
+    : 'ID: ' + dialog.id;
+
+  document.getElementById('msgsBody').innerHTML =
+    '<div style="text-align:center;color:var(--text-3);font-size:13px;padding:40px">Загрузка...</div>';
+
+  await loadMessages(true);
+  pollTimer = setInterval(() => loadMessages(false), 5000);
+};
+
+// ── Messages ───────────────────────────────────────────────────────────────
+window.loadMessages = async function(scrollToBottom = true) {
+  if (!currentAccount || !currentChat) return;
+  try {
+    const msgs = await api('GET',
+      `/api/accounts/${currentAccount}/dialogs/${currentChat.id}/messages?limit=60`);
+    renderMessages(msgs, scrollToBottom);
+  } catch (e) {
+    console.error('loadMessages:', e);
+  }
+};
+
+function renderMessages(msgs, scrollToBottom) {
+  const body = document.getElementById('msgsBody');
+  const wasAtBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 80;
+  const newLastId = msgs.length ? msgs[msgs.length - 1].id : 0;
+  const hasNew = newLastId !== lastMsgId;
+
+  if (msgs.length === 0) {
+    body.innerHTML =
+      '<div style="text-align:center;color:var(--text-3);font-size:13px;padding:40px">Нет сообщений</div>';
+    return;
+  }
+
+  body.innerHTML = msgs.map(m => `
+    <div class="msg ${m.out ? 'out' : 'in'}">
+      <div>${esc(m.text)}</div>
+      <div class="msg-time">${fmtDateTime(m.date)}</div>
+    </div>
+  `).join('');
+
+  if (scrollToBottom || (wasAtBottom && hasNew)) {
+    body.scrollTop = body.scrollHeight;
+  }
+  lastMsgId = newLastId;
+}
+
+// ── Send ───────────────────────────────────────────────────────────────────
+window.sendMsg = async function() {
+  const inp  = document.getElementById('msgInput');
+  const text = inp.value.trim();
+  if (!text || !currentAccount || !currentChat) return;
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  inp.disabled = true;
+
+  try {
+    await api('POST',
+      `/api/accounts/${currentAccount}/dialogs/${currentChat.id}/send`,
+      { text });
+    inp.value = '';
+    inp.style.height = '';
+    await loadMessages(true);
+  } catch (e) {
+    toast(e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    inp.disabled = false;
+    inp.focus();
+  }
+};
+
+document.getElementById('msgInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMsg();
+  }
+});
+
+document.getElementById('msgInput').addEventListener('input', function() {
+  this.style.height = '';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function esc(s) {
+  return (s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function fmtTime(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString())
+    return d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString('ru', { day: '2-digit', month: '2-digit' });
+}
+
+function fmtDateTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+loadAccounts();
+</script>
+</body>
+</html>
