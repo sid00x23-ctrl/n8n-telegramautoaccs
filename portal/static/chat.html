@@ -661,8 +661,16 @@ function renderMessages(msgs, scrollToBottom) {
         <div class="msg out" id="msg_${m.id}">${inner}</div>
       </div>`;
     } else {
-      return `<div class="msg-wrapper in">
+      return `<div class="msg-wrapper in" data-msg-id="${m.id}" data-msg-text="${m.text.replace(/"/g, '&quot;')}" data-msg-date="${m.date}">
         <div class="msg in">${inner}</div>
+        <div class="msg-actions">
+          <button class="msg-action-btn" onclick="resendToN8n(${m.id}, this)" title="Повторно отправить в n8n">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+              <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+            </svg>
+          </button>
+        </div>
       </div>`;
     }
   }).join('');
@@ -799,6 +807,30 @@ window.deleteMsg = async function(msgId) {
     await loadMessages(false);
   } catch (e) {
     toast('Ошибка удаления: ' + e.message, 'err');
+  }
+};
+
+// ── Resend to n8n ──────────────────────────────────────────────────────────
+window.resendToN8n = async function(msgId, btn) {
+  const wrapper = document.querySelector(`.msg-wrapper.in[data-msg-id="${msgId}"]`);
+  if (!wrapper) return;
+  btn.disabled = true;
+  try {
+    await api('POST', '/api/resend-to-n8n', {
+      account_id:   currentAccount,
+      chat_id:      currentChat.id,
+      message_id:   msgId,
+      from_user_id: currentChat.id,  // для личных чатов chat_id == user_id
+      from_username: currentChat.username || null,
+      from_name:    currentChat.name || '',
+      message_text: wrapper.dataset.msgText,
+      timestamp:    wrapper.dataset.msgDate,
+    });
+    toast('Отправлено в n8n', 'ok');
+  } catch (e) {
+    toast('Ошибка: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
   }
 };
 

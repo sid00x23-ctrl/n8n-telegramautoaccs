@@ -270,6 +270,33 @@ async def delete_account(account_id: str, request: Request):
     return await _proxy("DELETE", f"/accounts/{account_id}")
 
 
+# ── Resend message to n8n ─────────────────────────────────────────────────────
+
+@app.post("/api/resend-to-n8n")
+async def resend_to_n8n(request: Request):
+    require_auth(request)
+    body = await request.json()
+    payload = {
+        "account_id": body["account_id"],
+        "chat_id": body["chat_id"],
+        "message_id": body["message_id"],
+        "from_user_id": body.get("from_user_id"),
+        "from_username": body.get("from_username"),
+        "from_name": body.get("from_name", ""),
+        "message_text": body["message_text"],
+        "timestamp": body["timestamp"],
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(f"{N8N_INTERNAL_URL}/webhook/telegram-incoming", json=payload)
+            resp.raise_for_status()
+    except httpx.ConnectError:
+        raise HTTPException(status_code=502, detail="n8n недоступен")
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=502, detail=f"n8n вернул {e.response.status_code}")
+    return {"ok": True}
+
+
 # ── PM2 control (userbot start/stop) ──────────────────────────────────────────
 
 async def _pm2_status(name: str) -> dict:
