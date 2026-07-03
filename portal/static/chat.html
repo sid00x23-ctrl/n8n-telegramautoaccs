@@ -641,7 +641,8 @@ document.getElementById('searchInput').addEventListener('input', renderDialogs);
 // ── Open dialog ────────────────────────────────────────────────────────────
 window.openDialog = async function(idx) {
   const q = document.getElementById('searchInput').value.toLowerCase();
-  const list = q ? allDialogs.filter(d => (d.name || '').toLowerCase().includes(q)) : allDialogs;
+  let list = q ? allDialogs.filter(d => (d.name || '').toLowerCase().includes(q)) : allDialogs;
+  if (filterMode === 'sheet') list = list.filter(d => sheetById.has(d.id));
   const dialog = list[idx];
   if (!dialog) return;
 
