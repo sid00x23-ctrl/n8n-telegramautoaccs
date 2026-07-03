@@ -531,8 +531,9 @@ async function loadDialogs() {
               console.log(`[loadDialogs] ${a.account_id}: ${dialogs.length} dialogs`);
               return dialogs.map(d => ({
                 ...d,
-                _account_id:   a.account_id,
-                _account_name: a.name || a.account_id,
+                _account_id:       a.account_id,
+                _account_name:     a.name || a.account_id,
+                _account_username: a.username || null,
               }));
             })
             .catch(err => { console.warn(`[loadDialogs] ${a.account_id} FAILED:`, err); return []; })
@@ -574,8 +575,11 @@ function renderDialogs() {
     const time    = d.last_message?.date ? fmtTime(d.last_message.date) : '';
     const badge   = d.unread_count > 0 ? `<div class="d-badge">${d.unread_count}</div>` : '';
     const active  = (currentChat?.id === d.id && currentChat?._account_id === d._account_id) ? 'active' : '';
-    const accBadge = allAccountsMode && d._account_name
-      ? `<div class="d-account-badge">${esc(d._account_name)}</div>` : '';
+    const accLabel = allAccountsMode
+      ? (d._account_username ? '@' + d._account_username : d._account_id)
+      : '';
+    const accBadge = accLabel
+      ? `<div class="d-account-badge">${esc(accLabel)}</div>` : '';
     return `<div class="dialog-item ${active}" data-idx="${i}" onclick="openDialog(${i})">
       <div class="d-avatar">${esc(init)}</div>
       <div class="d-info">
