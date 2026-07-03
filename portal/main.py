@@ -227,9 +227,9 @@ async def auth_qr_wait(account_id: str, request: Request):
 
 
 @app.get("/api/accounts/{account_id}/dialogs")
-async def proxy_dialogs(account_id: str, request: Request, limit: int = 30):
+async def proxy_dialogs(account_id: str, request: Request, limit: int = 30, sent_only: bool = False):
     require_auth(request)
-    return await _proxy("GET", f"/accounts/{account_id}/dialogs?limit={limit}", timeout=30.0)
+    return await _proxy("GET", f"/accounts/{account_id}/dialogs?limit={limit}&sent_only={str(sent_only).lower()}", timeout=30.0)
 
 
 @app.get("/api/accounts/{account_id}/dialogs/{chat_id}/messages")

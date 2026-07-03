@@ -51,6 +51,9 @@
     .sidebar-search {
       padding: 10px 12px;
       border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
     .search-input {
       width: 100%;
@@ -65,6 +68,31 @@
       transition: border-color .2s;
     }
     .search-input:focus { border-color: var(--primary); }
+
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .filter-btn {
+      flex: 1;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-family: var(--font);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background .15s, color .15s, border-color .15s;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-2);
+      text-align: center;
+    }
+    .filter-btn.active {
+      background: rgba(0,212,255,0.1);
+      border-color: var(--primary);
+      color: var(--primary);
+      font-weight: 600;
+    }
 
     .dialogs-list { flex: 1; overflow-y: auto; }
     .dialogs-list::-webkit-scrollbar { width: 4px; }
@@ -336,6 +364,10 @@
     <div class="sidebar">
       <div class="sidebar-search">
         <input id="searchInput" class="search-input" type="text" placeholder="Поиск по имени...">
+        <div class="filter-row">
+          <button class="filter-btn active" id="filterSent" onclick="setFilter(true)">С приветствием</button>
+          <button class="filter-btn" id="filterAll" onclick="setFilter(false)">Все диалоги</button>
+        </div>
       </div>
       <div class="dialogs-list" id="dialogsList">
         <div style="padding:40px;text-align:center;color:var(--text-3);font-size:13px">Выберите аккаунт</div>
@@ -392,6 +424,7 @@ let currentChat    = null;
 let allDialogs     = [];
 let lastMsgId      = 0;
 let pollTimer      = null;
+let sentOnly       = true;
 
 // ── Accounts ───────────────────────────────────────────────────────────────
 async function loadAccounts() {
@@ -432,10 +465,18 @@ document.getElementById('refreshDialogsBtn').addEventListener('click', () => {
   if (currentAccount) loadDialogs();
 });
 
+// ── Filter ─────────────────────────────────────────────────────────────────
+window.setFilter = function(val) {
+  sentOnly = val;
+  document.getElementById('filterSent').classList.toggle('active', val);
+  document.getElementById('filterAll').classList.toggle('active', !val);
+  if (currentAccount) loadDialogs();
+};
+
 // ── Dialogs ────────────────────────────────────────────────────────────────
 async function loadDialogs() {
   try {
-    allDialogs = await api('GET', `/api/accounts/${currentAccount}/dialogs?limit=50`);
+    allDialogs = await api('GET', `/api/accounts/${currentAccount}/dialogs?limit=200&sent_only=${sentOnly}`);
     renderDialogs();
   } catch (e) {
     document.getElementById('dialogsList').innerHTML =

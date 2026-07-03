@@ -110,9 +110,9 @@ def create_app(manager: AccountManager) -> FastAPI:
         return result
 
     @app.get("/accounts/{account_id}/dialogs", tags=["messaging"])
-    async def get_dialogs(account_id: str, limit: int = 30):
+    async def get_dialogs(account_id: str, limit: int = 30, sent_only: bool = False):
         try:
-            return await manager.get_dialogs(account_id, limit)
+            return await manager.get_dialogs(account_id, limit, sent_only)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
