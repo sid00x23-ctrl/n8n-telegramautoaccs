@@ -294,7 +294,7 @@ def _read_sheet_contacts() -> list[dict]:
     records = ws.get_all_records()
     result = []
     for r in records:
-        if r.get("Статус") and r.get("Аккаунт"):
+        if r.get("Статус"):
             try:
                 user_id = int(r["User_id"])
             except (ValueError, KeyError):
