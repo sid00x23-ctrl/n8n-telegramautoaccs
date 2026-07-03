@@ -447,6 +447,7 @@ async function loadAccounts() {
   try {
     const accounts = await api('GET', '/api/accounts');
     authorizedAccounts = accounts.filter(a => a.authorized);
+    console.log('[loadAccounts] authorizedAccounts:', authorizedAccounts.map(a => a.account_id));
     const sel = document.getElementById('accountSel');
     if (authorizedAccounts.length === 0) {
       sel.innerHTML = '<option value="">Нет авторизованных аккаунтов</option>';
@@ -457,13 +458,16 @@ async function loadAccounts() {
       authorizedAccounts.map(a =>
         `<option value="${a.account_id}">${a.name || a.account_id}${a.username ? ' · @' + a.username : ''}</option>`
       ).join('');
+    console.log('[loadAccounts] sel.value after innerHTML:', sel.value);
     await selectAccount('__all__');
+    console.log('[loadAccounts] after selectAccount(__all__), allAccountsMode:', allAccountsMode, 'currentAccount:', currentAccount);
   } catch (e) {
     toast('Ошибка загрузки аккаунтов: ' + e.message, 'err');
   }
 }
 
 async function selectAccount(id) {
+  console.log('[selectAccount] called with id:', id, '| stack:', new Error().stack.split('\n')[2]?.trim());
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   allAccountsMode = (id === '__all__');
   currentAccount  = allAccountsMode ? null : id;
@@ -488,6 +492,7 @@ async function selectAccount(id) {
 }
 
 document.getElementById('accountSel').addEventListener('change', e => {
+  console.log('[change event] accountSel value:', e.target.value);
   if (e.target.value) selectAccount(e.target.value);
 });
 
@@ -506,17 +511,21 @@ window.setFilter = function(val) {
 
 // ── Dialogs ────────────────────────────────────────────────────────────────
 async function loadDialogs() {
+  console.log('[loadDialogs] allAccountsMode:', allAccountsMode, '| currentAccount:', currentAccount);
   try {
     if (allAccountsMode) {
       const results = await Promise.all(
         authorizedAccounts.map(a =>
           api('GET', `/api/accounts/${a.account_id}/dialogs?limit=200&sent_only=true`)
-            .then(dialogs => dialogs.map(d => ({
-              ...d,
-              _account_id:   a.account_id,
-              _account_name: a.name || a.account_id,
-            })))
-            .catch(() => [])
+            .then(dialogs => {
+              console.log(`[loadDialogs] ${a.account_id}: ${dialogs.length} dialogs`);
+              return dialogs.map(d => ({
+                ...d,
+                _account_id:   a.account_id,
+                _account_name: a.name || a.account_id,
+              }));
+            })
+            .catch(err => { console.warn(`[loadDialogs] ${a.account_id} FAILED:`, err); return []; })
         )
       );
       allDialogs = results.flat().sort((a, b) => {
@@ -524,9 +533,11 @@ async function loadDialogs() {
         const db = b.last_message?.date || '';
         return db < da ? -1 : db > da ? 1 : 0;
       });
+      console.log('[loadDialogs] total allDialogs:', allDialogs.length);
     } else {
       allDialogs = await api('GET',
         `/api/accounts/${currentAccount}/dialogs?limit=200&sent_only=${sentOnly}`);
+      console.log('[loadDialogs] single account dialogs:', allDialogs.length);
     }
     renderDialogs();
   } catch (e) {
