@@ -714,6 +714,18 @@ class AccountManager:
         if offset_id:
             kwargs["offset_id"] = offset_id
         msgs = await client.get_messages(entity, **kwargs)
+
+        # Получаем read_outbox_max_id — до какого исходящего собеседник прочитал
+        read_outbox_max_id = 0
+        try:
+            from telethon.tl.functions.messages import GetPeerDialogsRequest
+            from telethon.tl.types import InputDialogPeer
+            peer_result = await client(GetPeerDialogsRequest(peers=[InputDialogPeer(entity)]))
+            if peer_result.dialogs:
+                read_outbox_max_id = peer_result.dialogs[0].read_outbox_max_id or 0
+        except Exception:
+            pass
+
         result = []
         for m in reversed(list(msgs)):
             result.append({
@@ -721,6 +733,7 @@ class AccountManager:
                 "text": m.text or "",
                 "date": m.date.isoformat(),
                 "out": m.out,
+                "read": m.out and m.id <= read_outbox_max_id,
             })
         return result
 

@@ -343,6 +343,16 @@
       border: 1px solid var(--border); border-radius: 6px;
       padding: 4px 12px; font-size: 12px; cursor: pointer;
     }
+
+    /* ── Read receipts ── */
+    .msg-read-status {
+      font-size: 11px;
+      margin-left: 4px;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+    .msg-read-status.read   { color: var(--primary); }
+    .msg-read-status.unread { color: var(--text-3); }
   </style>
 </head>
 <body>
@@ -641,7 +651,12 @@ function renderMessages(msgs, scrollToBottom) {
   }
 
   body.innerHTML = msgs.map(m => {
-    const inner = `<div>${esc(m.text)}</div><div class="msg-time">${fmtDateTime(m.date)}</div>`;
+    const readIcon = m.out
+      ? `<span class="msg-read-status ${m.read ? 'read' : 'unread'}" title="${m.read ? 'Прочитано' : 'Доставлено'}">
+           ${m.read ? '✓✓' : '✓'}
+         </span>`
+      : '';
+    const inner = `<div>${esc(m.text)}</div><div class="msg-time">${fmtDateTime(m.date)}${readIcon}</div>`;
     if (m.out) {
       return `<div class="msg-wrapper out" data-msg-id="${m.id}" data-msg-text="${m.text.replace(/"/g, '&quot;')}">
         <div class="msg-actions">
