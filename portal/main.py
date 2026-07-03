@@ -5,6 +5,13 @@ Portal — веб-интерфейс управления клиентом.
 import asyncio
 import json
 import os
+
+try:
+    import gspread
+    from google.oauth2.service_account import Credentials as SACredentials
+    _GSPREAD_OK = True
+except ImportError:
+    _GSPREAD_OK = False
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
@@ -26,6 +33,9 @@ USERBOT_API_URL = os.getenv("USERBOT_API_URL", "http://userbot:8000")
 PM2_USERBOT_NAME = os.getenv("PM2_USERBOT_NAME", "userbot")
 N8N_URL = os.getenv("N8N_URL", "")
 N8N_INTERNAL_URL = os.getenv("N8N_INTERNAL_URL", "http://n8n:5678")
+GOOGLE_SA_JSON    = os.getenv("GOOGLE_SA_JSON", "")
+GOOGLE_SHEET_ID   = os.getenv("GOOGLE_SHEET_ID", "")
+GOOGLE_SHEET_NAME = os.getenv("GOOGLE_SHEET_NAME", "Клиенты")
 N8N_OWNER_EMAIL = os.getenv("N8N_OWNER_EMAIL", "")
 N8N_OWNER_PASSWORD = os.getenv("N8N_OWNER_PASSWORD", "")
 TOKEN_COOKIE = "portal_token"
@@ -268,6 +278,46 @@ async def proxy_edit_message(account_id: str, chat_id: int, message_id: int, req
 async def delete_account(account_id: str, request: Request):
     require_auth(request)
     return await _proxy("DELETE", f"/accounts/{account_id}")
+
+
+# ── Google Sheets contacts ────────────────────────────────────────────────────
+
+def _read_sheet_contacts() -> list[dict]:
+    if not _GSPREAD_OK or not GOOGLE_SA_JSON or not GOOGLE_SHEET_ID:
+        return []
+    creds = SACredentials.from_service_account_file(
+        GOOGLE_SA_JSON,
+        scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    )
+    gc = gspread.authorize(creds)
+    ws = gc.open_by_key(GOOGLE_SHEET_ID).worksheet(GOOGLE_SHEET_NAME)
+    records = ws.get_all_records()
+    result = []
+    for r in records:
+        if r.get("Статус") and r.get("Аккаунт"):
+            try:
+                user_id = int(r["User_id"])
+            except (ValueError, KeyError):
+                continue
+            result.append({
+                "user_id":  user_id,
+                "username": r.get("Username", ""),
+                "name":     r.get("Имя", ""),
+                "account":  r.get("Аккаунт", ""),
+                "status":   r.get("Статус", ""),
+            })
+    return result
+
+
+@app.get("/api/contacts")
+async def get_contacts(request: Request):
+    require_auth(request)
+    try:
+        loop = asyncio.get_event_loop()
+        contacts = await loop.run_in_executor(None, _read_sheet_contacts)
+        return contacts
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка чтения таблицы: {e}")
 
 
 # ── Resend message to n8n ─────────────────────────────────────────────────────

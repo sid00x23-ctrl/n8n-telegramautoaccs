@@ -107,6 +107,15 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .d-sheet-status {
+      font-size: 10px;
+      color: #a0e8b0;
+      opacity: 0.85;
+      margin-top: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
     .dialogs-list { flex: 1; overflow-y: auto; }
     .dialogs-list::-webkit-scrollbar { width: 4px; }
@@ -389,8 +398,9 @@
       <div class="sidebar-search">
         <input id="searchInput" class="search-input" type="text" placeholder="Поиск по имени...">
         <div class="filter-row">
-          <button class="filter-btn active" id="filterSent" onclick="setFilter(true)">С приветствием</button>
-          <button class="filter-btn" id="filterAll" onclick="setFilter(false)">Все диалоги</button>
+          <button class="filter-btn active" id="filterSent" onclick="setFilter('sent')">С приветствием</button>
+          <button class="filter-btn" id="filterAll" onclick="setFilter('all')">Все диалоги</button>
+          <button class="filter-btn" id="filterSheet" onclick="setFilter('sheet')">Из таблицы</button>
         </div>
       </div>
       <div class="dialogs-list" id="dialogsList">
@@ -448,9 +458,11 @@ let currentChat    = null;
 let allDialogs     = [];
 let lastMsgId      = 0;
 let pollTimer      = null;
-let sentOnly       = true;
+let filterMode     = 'sent';   // 'sent' | 'all' | 'sheet'
 let allAccountsMode = false;
 let authorizedAccounts = [];
+let sheetContacts  = [];       // [{user_id, username, name, account, status}]
+let sheetById      = new Map(); // user_id → contact
 
 // ── Accounts ───────────────────────────────────────────────────────────────
 async function loadAccounts() {
@@ -484,15 +496,17 @@ async function selectAccount(id) {
   currentChat     = null;
   lastMsgId       = 0;
 
-  // В режиме "все аккаунты" только sent_only доступен
+  // В режиме одного аккаунта сбрасываем sheet-фильтр на sent
+  if (!allAccountsMode && filterMode === 'sheet') {
+    filterMode = 'sent';
+  }
   if (allAccountsMode) {
-    sentOnly = true;
-    document.getElementById('filterSent').classList.add('active');
-    document.getElementById('filterAll').classList.remove('active');
     document.getElementById('filterAll').disabled = true;
   } else {
     document.getElementById('filterAll').disabled = false;
+    document.getElementById('filterSheet').disabled = false;
   }
+  _syncFilterBtns();
 
   document.getElementById('chatEmpty').style.display = '';
   document.getElementById('chatActive').classList.remove('visible');
@@ -511,18 +525,36 @@ document.getElementById('refreshDialogsBtn').addEventListener('click', () => {
 });
 
 // ── Filter ─────────────────────────────────────────────────────────────────
-window.setFilter = function(val) {
-  if (!val && allAccountsMode) return; // "Все диалоги" недоступен в режиме всех аккаунтов
-  sentOnly = val;
-  document.getElementById('filterSent').classList.toggle('active', val);
-  document.getElementById('filterAll').classList.toggle('active', !val);
+function _syncFilterBtns() {
+  document.getElementById('filterSent').classList.toggle('active', filterMode === 'sent');
+  document.getElementById('filterAll').classList.toggle('active', filterMode === 'all');
+  document.getElementById('filterSheet').classList.toggle('active', filterMode === 'sheet');
+}
+
+window.setFilter = function(mode) {
+  if (mode === 'all' && allAccountsMode) return; // "Все диалоги" недоступен в режиме всех аккаунтов
+  filterMode = mode;
+  _syncFilterBtns();
   loadDialogs();
 };
 
 // ── Dialogs ────────────────────────────────────────────────────────────────
 async function loadDialogs() {
-  console.log('[loadDialogs] allAccountsMode:', allAccountsMode, '| currentAccount:', currentAccount);
+  console.log('[loadDialogs] allAccountsMode:', allAccountsMode, '| currentAccount:', currentAccount, '| filterMode:', filterMode);
   try {
+    // Load sheet contacts whenever sheet mode is active
+    if (filterMode === 'sheet') {
+      try {
+        sheetContacts = await api('GET', '/api/contacts');
+        sheetById = new Map(sheetContacts.map(c => [c.user_id, c]));
+        console.log('[loadDialogs] sheet contacts loaded:', sheetContacts.length);
+      } catch (e) {
+        console.warn('[loadDialogs] failed to load sheet contacts:', e);
+        sheetContacts = [];
+        sheetById = new Map();
+      }
+    }
+
     if (allAccountsMode) {
       const results = await Promise.all(
         authorizedAccounts.map(a =>
@@ -546,6 +578,7 @@ async function loadDialogs() {
       });
       console.log('[loadDialogs] total allDialogs:', allDialogs.length);
     } else {
+      const sentOnly = filterMode !== 'all';
       allDialogs = await api('GET',
         `/api/accounts/${currentAccount}/dialogs?limit=200&sent_only=${sentOnly}`);
       console.log('[loadDialogs] single account dialogs:', allDialogs.length);
@@ -559,7 +592,13 @@ async function loadDialogs() {
 
 function renderDialogs() {
   const q = document.getElementById('searchInput').value.toLowerCase();
-  const list = q ? allDialogs.filter(d => (d.name || '').toLowerCase().includes(q)) : allDialogs;
+  let list = q ? allDialogs.filter(d => (d.name || '').toLowerCase().includes(q)) : allDialogs;
+
+  // In sheet mode only show dialogs whose user_id is in the sheet
+  if (filterMode === 'sheet') {
+    list = list.filter(d => sheetById.has(d.id));
+  }
+
   const el = document.getElementById('dialogsList');
 
   if (list.length === 0) {
@@ -580,12 +619,15 @@ function renderDialogs() {
       : '';
     const accBadge = accLabel
       ? `<div class="d-account-badge">${esc(accLabel)}</div>` : '';
+    const contact = sheetById.get(d.id);
+    const statusBadge = contact
+      ? `<div class="d-sheet-status">${esc(contact.status)}</div>` : '';
     return `<div class="dialog-item ${active}" data-idx="${i}" onclick="openDialog(${i})">
       <div class="d-avatar">${esc(init)}</div>
       <div class="d-info">
         <div class="d-name">${esc(d.name || String(d.id))}</div>
         <div class="d-preview">${esc(preview)}</div>
-        ${accBadge}
+        ${accBadge}${statusBadge}
       </div>
       <div class="d-meta"><div class="d-time">${time}</div>${badge}</div>
     </div>`;
