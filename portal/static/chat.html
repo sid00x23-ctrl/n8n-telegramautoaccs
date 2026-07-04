@@ -817,6 +817,7 @@ function fmtOnlineStatus(s) {
   if (s.type === 'recently')  return { text: 'Недавно', cls: 'recently' };
   if (s.type === 'last_week') return { text: 'На этой неделе', cls: 'offline' };
   if (s.type === 'last_month') return { text: 'В этом месяце', cls: 'offline' };
+  if (s.type === 'long_ago')  return { text: 'Давно', cls: 'offline' };
   if (s.type === 'offline' && s.was_online) {
     const diff = Math.floor((Date.now() - new Date(s.was_online)) / 1000);
     let text;

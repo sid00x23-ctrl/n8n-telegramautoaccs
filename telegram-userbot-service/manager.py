@@ -20,7 +20,7 @@ from telethon.tl.functions.messages import SendReactionRequest
 from telethon.tl.types import (
     User, PeerUser, ReactionEmoji,
     UserStatusOnline, UserStatusOffline,
-    UserStatusRecently, UserStatusLastWeek, UserStatusLastMonth,
+    UserStatusRecently, UserStatusLastWeek, UserStatusLastMonth, UserStatusEmpty,
 )
 
 from config import settings
@@ -85,6 +85,8 @@ class AccountManager:
             return {"type": "last_week"}
         if isinstance(status, UserStatusLastMonth):
             return {"type": "last_month"}
+        if isinstance(status, UserStatusEmpty):
+            return {"type": "long_ago"}
         return {"type": "unknown"}
 
     def _load_sent_chats(self):
