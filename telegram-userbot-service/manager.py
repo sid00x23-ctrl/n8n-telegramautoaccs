@@ -110,6 +110,18 @@ class AccountManager:
                 logger.warning(f"[{account_id}] Прогрев кеша не удался: {e}")
             await asyncio.sleep(1)  # пауза между аккаунтами
 
+    async def _rewarm_account(self, account_id: str):
+        """Фоновый рефетч кеша диалогов после инвалидации."""
+        await asyncio.sleep(2)
+        if account_id in self._dialogs_cache:
+            return  # кто-то уже обновил
+        if not self.authorized.get(account_id):
+            return
+        try:
+            await self.get_dialogs(account_id, limit=200, sent_only=False)
+        except Exception:
+            pass
+
     async def stop_all(self):
         if self._greeting_worker_task:
             self._greeting_worker_task.cancel()
@@ -630,8 +642,9 @@ class AccountManager:
             await self.logout(account_id)
 
     def _invalidate_dialogs_cache(self, account_id: str):
-        """Сбросить кеш диалогов для аккаунта."""
+        """Сбросить кеш диалогов и немедленно запустить фоновый рефетч."""
         self._dialogs_cache.pop(account_id, None)
+        asyncio.create_task(self._rewarm_account(account_id))
 
     # ------------------------------------------------------------------ #
     #  Реакция на сообщение                                                #
@@ -717,7 +730,7 @@ class AccountManager:
         # чтобы один кеш покрывал запросы с разными limit параметрами
         FETCH_LIMIT = 200
         cached = self._dialogs_cache.get(account_id)
-        if cached and time.time() - cached[1] < 60:
+        if cached and time.time() - cached[1] < 300:
             full_list = cached[0]
         else:
             try:
