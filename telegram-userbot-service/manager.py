@@ -602,8 +602,7 @@ class AccountManager:
         self.authorized.pop(account_id, None)
         self._auth_state.pop(account_id, None)
         self._invalidate_dialogs_cache(account_id)
-        stale_rox = [k for k in self._read_outbox_cache if k.startswith(f"{account_id}:")]
-        for k in stale_rox:
+        for k in [k for k in self._read_outbox_cache if k.startswith(f"{account_id}:")]:
             del self._read_outbox_cache[k]
 
         self._save_configs()
@@ -616,9 +615,7 @@ class AccountManager:
 
     def _invalidate_dialogs_cache(self, account_id: str):
         """Сбросить кеш диалогов для аккаунта."""
-        stale = [k for k in self._dialogs_cache if k.startswith(f"{account_id}:")]
-        for k in stale:
-            del self._dialogs_cache[k]
+        self._dialogs_cache.pop(account_id, None)
 
     # ------------------------------------------------------------------ #
     #  Реакция на сообщение                                                #
@@ -700,14 +697,15 @@ class AccountManager:
         if not client.is_connected():
             raise ValueError(f"Аккаунт '{account_id}' не подключён к Telegram")
 
-        # Кеш: один полный список на (account_id, limit), фильтруем в Python
-        cache_key = f"{account_id}:{limit}"
-        cached = self._dialogs_cache.get(cache_key)
+        # Кеш по account_id (независимо от limit) — всегда фетчим 200
+        # чтобы один кеш покрывал запросы с разными limit параметрами
+        FETCH_LIMIT = 200
+        cached = self._dialogs_cache.get(account_id)
         if cached and time.time() - cached[1] < 60:
             full_list = cached[0]
         else:
             try:
-                dialogs = await client.get_dialogs(limit=limit)
+                dialogs = await client.get_dialogs(limit=FETCH_LIMIT)
             except Exception as e:
                 raise ValueError(f"Ошибка получения диалогов: {e}") from e
             full_list = []
@@ -725,7 +723,7 @@ class AccountManager:
                         "out": last_msg.out,
                     } if last_msg else None,
                 })
-            self._dialogs_cache[cache_key] = (full_list, time.time())
+            self._dialogs_cache[account_id] = (full_list, time.time())
             logger.debug(f"[{account_id}] Диалоги получены из Telegram: {len(full_list)} шт.")
 
         if sent_only:
