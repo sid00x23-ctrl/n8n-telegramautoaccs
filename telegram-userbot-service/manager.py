@@ -93,6 +93,22 @@ class AccountManager:
         for account_id, cfg in self.configs.items():
             await self._connect_client(account_id, cfg.phone)
         self._greeting_worker_task = asyncio.create_task(self._greeting_worker())
+        asyncio.create_task(self._warmup_dialogs_cache())
+
+    async def _warmup_dialogs_cache(self):
+        """Прогреть кеш диалогов для всех аккаунтов при старте."""
+        await asyncio.sleep(3)  # дать время на финальную инициализацию
+        for account_id in list(self.clients.keys()):
+            if not self.authorized.get(account_id):
+                continue
+            if account_id in self._dialogs_cache:
+                continue  # уже тёплый
+            try:
+                await self.get_dialogs(account_id, limit=200, sent_only=False)
+                logger.info(f"[{account_id}] Кеш диалогов прогрет при старте")
+            except Exception as e:
+                logger.warning(f"[{account_id}] Прогрев кеша не удался: {e}")
+            await asyncio.sleep(1)  # пауза между аккаунтами
 
     async def stop_all(self):
         if self._greeting_worker_task:
