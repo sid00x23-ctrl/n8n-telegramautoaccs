@@ -560,7 +560,7 @@ async function loadDialogs() {
       const sentOnly = filterMode !== 'sheet';
       const results = await Promise.all(
         authorizedAccounts.map(a =>
-          api('GET', `/api/accounts/${a.account_id}/dialogs?limit=100&sent_only=${sentOnly}`)
+          api('GET', `/api/accounts/${a.account_id}/dialogs?limit=200&sent_only=${sentOnly}`)
             .then(dialogs => {
               console.log(`[loadDialogs] ${a.account_id}: ${dialogs.length} dialogs`);
               return dialogs.map(d => ({
@@ -582,7 +582,7 @@ async function loadDialogs() {
     } else {
       const sentOnly = filterMode !== 'all';
       allDialogs = await api('GET',
-        `/api/accounts/${currentAccount}/dialogs?limit=100&sent_only=${sentOnly}`);
+        `/api/accounts/${currentAccount}/dialogs?limit=200&sent_only=${sentOnly}`);
       console.log('[loadDialogs] single account dialogs:', allDialogs.length);
     }
     renderDialogs();
@@ -681,9 +681,6 @@ window.loadMessages = async function(scrollToBottom = true) {
   try {
     const msgs = await api('GET',
       `/api/accounts/${currentAccount}/dialogs/${currentChat.id}/messages?limit=60`);
-    const newLastId = msgs.length ? msgs[msgs.length - 1].id : 0;
-    // На поллинге пропускаем перерисовку если ничего нового
-    if (!scrollToBottom && newLastId === lastMsgId) return;
     renderMessages(msgs, scrollToBottom);
   } catch (e) {
     console.error('loadMessages:', e);
