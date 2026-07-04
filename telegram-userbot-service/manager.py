@@ -707,7 +707,9 @@ class AccountManager:
             full_list = cached[0]
         else:
             try:
-                dialogs = await client.get_dialogs(limit=limit)
+                dialogs = await asyncio.wait_for(client.get_dialogs(limit=limit), timeout=20.0)
+            except asyncio.TimeoutError:
+                raise ValueError(f"Таймаут получения диалогов для '{account_id}' (>20 сек)")
             except Exception as e:
                 raise ValueError(f"Ошибка получения диалогов: {e}") from e
             full_list = []
