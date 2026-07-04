@@ -44,6 +44,9 @@ module.exports = {
         N8N_VERSION_NOTIFICATIONS_ENABLED: "false",
         N8N_TRUST_PROXY: "true",
         N8N_PROXY_HOPS: "1",
+        EXECUTIONS_DATA_PRUNE: "true",
+        EXECUTIONS_DATA_MAX_AGE: "168",  // хранить max 7 дней
+        EXECUTIONS_DATA_MAX_COUNT: "100", // хранить max 100 выполнений
       }
     }
   ]
