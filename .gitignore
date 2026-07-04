@@ -13,6 +13,7 @@ venv/
 *.session-journal
 sessions/
 accounts_config.json
+*-api-*.json
 
 # MCP config — содержит API-ключи и локальные пути
 .mcp.json
