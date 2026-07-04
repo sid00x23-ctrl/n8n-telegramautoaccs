@@ -17,7 +17,11 @@ from telethon.errors import (
 )
 from telethon.tl.functions.auth import ResendCodeRequest
 from telethon.tl.functions.messages import SendReactionRequest
-from telethon.tl.types import User, PeerUser, ReactionEmoji
+from telethon.tl.types import (
+    User, PeerUser, ReactionEmoji,
+    UserStatusOnline, UserStatusOffline,
+    UserStatusRecently, UserStatusLastWeek, UserStatusLastMonth,
+)
 
 from config import settings
 from models import AccountConfig
@@ -67,6 +71,21 @@ class AccountManager:
     def _save_configs(self):
         data = [cfg.model_dump(mode='json') for cfg in self.configs.values()]
         CONFIGS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+
+    @staticmethod
+    def _parse_status(status) -> dict:
+        """Конвертирует Telethon UserStatus в простой dict."""
+        if isinstance(status, UserStatusOnline):
+            return {"type": "online"}
+        if isinstance(status, UserStatusOffline):
+            return {"type": "offline", "was_online": status.was_online.isoformat()}
+        if isinstance(status, UserStatusRecently):
+            return {"type": "recently"}
+        if isinstance(status, UserStatusLastWeek):
+            return {"type": "last_week"}
+        if isinstance(status, UserStatusLastMonth):
+            return {"type": "last_month"}
+        return {"type": "unknown"}
 
     def _load_sent_chats(self):
         if SENT_CHATS_FILE.exists():
@@ -692,11 +711,13 @@ class AccountManager:
                 continue
             entity = d.entity
             last_msg = d.message
+            status = getattr(entity, "status", None)
             result.append({
                 "id": d.id,
                 "name": d.name or str(d.id),
                 "username": getattr(entity, "username", None),
                 "unread_count": d.unread_count,
+                "last_online": self._parse_status(status) if status is not None else None,
                 "last_message": {
                     "text": (last_msg.text or "")[:120],
                     "date": last_msg.date.isoformat(),

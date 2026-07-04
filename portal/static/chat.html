@@ -116,6 +116,10 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .d-online { font-size: 10px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .d-online.online   { color: #4dff91; }
+    .d-online.recently { color: var(--text-3); }
+    .d-online.offline  { color: var(--text-3); }
 
     .dialogs-list { flex: 1; overflow-y: auto; }
     .dialogs-list::-webkit-scrollbar { width: 4px; }
@@ -624,12 +628,15 @@ function renderDialogs() {
     const contact = sheetById.get(d.id);
     const statusBadge = contact
       ? `<div class="d-sheet-status">${esc(contact.status)}</div>` : '';
+    const onlineInfo = fmtOnlineStatus(d.last_online);
+    const onlineBadge = onlineInfo
+      ? `<div class="d-online ${onlineInfo.cls}">${esc(onlineInfo.text)}</div>` : '';
     return `<div class="dialog-item ${active}" data-idx="${i}" onclick="openDialog(${i})">
       <div class="d-avatar">${esc(init)}</div>
       <div class="d-info">
         <div class="d-name">${esc(d.name || String(d.id))}</div>
         <div class="d-preview">${esc(preview)}</div>
-        ${accBadge}${statusBadge}
+        ${accBadge}${statusBadge}${onlineBadge}
       </div>
       <div class="d-meta"><div class="d-time">${time}</div>${badge}</div>
     </div>`;
@@ -802,6 +809,23 @@ function fmtTime(iso) {
 function fmtDateTime(iso) {
   const d = new Date(iso);
   return d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+}
+
+function fmtOnlineStatus(s) {
+  if (!s) return null;
+  if (s.type === 'online')    return { text: 'В сети', cls: 'online' };
+  if (s.type === 'recently')  return { text: 'Недавно', cls: 'recently' };
+  if (s.type === 'last_week') return { text: 'На этой неделе', cls: 'offline' };
+  if (s.type === 'last_month') return { text: 'В этом месяце', cls: 'offline' };
+  if (s.type === 'offline' && s.was_online) {
+    const diff = Math.floor((Date.now() - new Date(s.was_online)) / 1000);
+    let text;
+    if (diff < 3600)      text = `${Math.floor(diff / 60)} мин. назад`;
+    else if (diff < 86400) text = `${Math.floor(diff / 3600)} ч. назад`;
+    else                   text = `${Math.floor(diff / 86400)} дн. назад`;
+    return { text, cls: 'offline' };
+  }
+  return null;
 }
 
 // ── Edit / Delete messages ─────────────────────────────────────────────────
