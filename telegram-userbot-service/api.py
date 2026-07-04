@@ -115,6 +115,9 @@ def create_app(manager: AccountManager) -> FastAPI:
             return await manager.get_dialogs(account_id, limit, sent_only)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            logger.exception(f"[get_dialogs] {account_id}: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
 
     @app.get("/accounts/{account_id}/dialogs/{chat_id}/messages", tags=["messaging"])
     async def get_messages(account_id: str, chat_id: int, limit: int = 50, offset_id: int = 0):

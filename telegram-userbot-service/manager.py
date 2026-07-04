@@ -679,8 +679,13 @@ class AccountManager:
         if not self.authorized.get(account_id):
             raise ValueError(f"Аккаунт '{account_id}' не авторизован")
         client = self.clients[account_id]
+        if not client.is_connected():
+            raise ValueError(f"Аккаунт '{account_id}' не подключён к Telegram")
         sent_ids = self._sent_chats.get(account_id, set())
-        dialogs = await client.get_dialogs(limit=limit)
+        try:
+            dialogs = await client.get_dialogs(limit=limit)
+        except Exception as e:
+            raise ValueError(f"Ошибка получения диалогов: {e}") from e
         result = []
         for d in dialogs:
             if sent_only and d.id not in sent_ids:
