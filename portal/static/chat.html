@@ -681,6 +681,9 @@ window.loadMessages = async function(scrollToBottom = true) {
   try {
     const msgs = await api('GET',
       `/api/accounts/${currentAccount}/dialogs/${currentChat.id}/messages?limit=60`);
+    const newLastId = msgs.length ? msgs[msgs.length - 1].id : 0;
+    // На поллинге пропускаем перерисовку если ничего нового
+    if (!scrollToBottom && newLastId === lastMsgId) return;
     renderMessages(msgs, scrollToBottom);
   } catch (e) {
     console.error('loadMessages:', e);

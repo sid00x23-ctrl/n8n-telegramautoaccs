@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import random
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
@@ -42,6 +43,11 @@ class AccountManager:
 
         # account_id → set of chat_ids успешно отправленных сообщений
         self._sent_chats: dict[str, set[int]] = {}
+
+        # Кеш диалогов: "account_id:limit" → (list[dict], timestamp)
+        self._dialogs_cache: dict[str, tuple[list, float]] = {}
+        # Кеш read_outbox_max_id: "account_id:chat_id" → (max_id, timestamp)
+        self._read_outbox_cache: dict[str, tuple[int, float]] = {}
 
         # Глобальная очередь приветствий (rate-limited отправки)
         self._greeting_queue: asyncio.Queue = asyncio.Queue()
@@ -150,6 +156,7 @@ class AccountManager:
             }
 
             await self._forward_to_n8n(payload, account_id)
+            self._invalidate_dialogs_cache(account_id)
 
         logger.info(f"Обработчик входящих сообщений зарегистрирован для {account_id}")
 
@@ -545,6 +552,7 @@ class AccountManager:
             await self._send_delivery_callback("sent", account_id, chat_id)
             self._sent_chats.setdefault(account_id, set()).add(chat_id)
             self._save_sent_chats()
+            self._invalidate_dialogs_cache(account_id)
             return {"status": "sent", "account_id": account_id, "chat_id": chat_id}
         except FloodWaitError as e:
             await self._send_delivery_callback("error", account_id, chat_id, f"FloodWait: {e.seconds} сек")
@@ -593,6 +601,10 @@ class AccountManager:
         self.configs.pop(account_id, None)
         self.authorized.pop(account_id, None)
         self._auth_state.pop(account_id, None)
+        self._invalidate_dialogs_cache(account_id)
+        stale_rox = [k for k in self._read_outbox_cache if k.startswith(f"{account_id}:")]
+        for k in stale_rox:
+            del self._read_outbox_cache[k]
 
         self._save_configs()
         logger.info(f"Аккаунт {account_id} удалён")
@@ -601,6 +613,12 @@ class AccountManager:
         """Выйти из всех аккаунтов."""
         for account_id in list(self.clients.keys()):
             await self.logout(account_id)
+
+    def _invalidate_dialogs_cache(self, account_id: str):
+        """Сбросить кеш диалогов для аккаунта."""
+        stale = [k for k in self._dialogs_cache if k.startswith(f"{account_id}:")]
+        for k in stale:
+            del self._dialogs_cache[k]
 
     # ------------------------------------------------------------------ #
     #  Реакция на сообщение                                                #
@@ -681,29 +699,39 @@ class AccountManager:
         client = self.clients[account_id]
         if not client.is_connected():
             raise ValueError(f"Аккаунт '{account_id}' не подключён к Telegram")
-        sent_ids = self._sent_chats.get(account_id, set())
-        try:
-            dialogs = await client.get_dialogs(limit=limit)
-        except Exception as e:
-            raise ValueError(f"Ошибка получения диалогов: {e}") from e
-        result = []
-        for d in dialogs:
-            if sent_only and d.id not in sent_ids:
-                continue
-            entity = d.entity
-            last_msg = d.message
-            result.append({
-                "id": d.id,
-                "name": d.name or str(d.id),
-                "username": getattr(entity, "username", None),
-                "unread_count": d.unread_count,
-                "last_message": {
-                    "text": (last_msg.text or "")[:120],
-                    "date": last_msg.date.isoformat(),
-                    "out": last_msg.out,
-                } if last_msg else None,
-            })
-        return result
+
+        # Кеш: один полный список на (account_id, limit), фильтруем в Python
+        cache_key = f"{account_id}:{limit}"
+        cached = self._dialogs_cache.get(cache_key)
+        if cached and time.time() - cached[1] < 60:
+            full_list = cached[0]
+        else:
+            try:
+                dialogs = await client.get_dialogs(limit=limit)
+            except Exception as e:
+                raise ValueError(f"Ошибка получения диалогов: {e}") from e
+            full_list = []
+            for d in dialogs:
+                entity = d.entity
+                last_msg = d.message
+                full_list.append({
+                    "id": d.id,
+                    "name": d.name or str(d.id),
+                    "username": getattr(entity, "username", None),
+                    "unread_count": d.unread_count,
+                    "last_message": {
+                        "text": (last_msg.text or "")[:120],
+                        "date": last_msg.date.isoformat(),
+                        "out": last_msg.out,
+                    } if last_msg else None,
+                })
+            self._dialogs_cache[cache_key] = (full_list, time.time())
+            logger.debug(f"[{account_id}] Диалоги получены из Telegram: {len(full_list)} шт.")
+
+        if sent_only:
+            sent_ids = self._sent_chats.get(account_id, set())
+            return [d for d in full_list if d["id"] in sent_ids]
+        return full_list
 
     async def get_messages(self, account_id: str, chat_id: int, limit: int = 50, offset_id: int = 0) -> list[dict]:
         if account_id not in self.clients:
@@ -720,16 +748,22 @@ class AccountManager:
             kwargs["offset_id"] = offset_id
         msgs = await client.get_messages(entity, **kwargs)
 
-        # Получаем read_outbox_max_id — до какого исходящего собеседник прочитал
-        read_outbox_max_id = 0
-        try:
-            from telethon.tl.functions.messages import GetPeerDialogsRequest
-            from telethon.tl.types import InputDialogPeer
-            peer_result = await client(GetPeerDialogsRequest(peers=[InputDialogPeer(entity)]))
-            if peer_result.dialogs:
-                read_outbox_max_id = peer_result.dialogs[0].read_outbox_max_id or 0
-        except Exception:
-            pass
+        # Кешируем read_outbox_max_id — не чаще раза в 15 сек
+        rk = f"{account_id}:{chat_id}"
+        rox_cached = self._read_outbox_cache.get(rk)
+        if rox_cached and time.time() - rox_cached[1] < 15:
+            read_outbox_max_id = rox_cached[0]
+        else:
+            read_outbox_max_id = 0
+            try:
+                from telethon.tl.functions.messages import GetPeerDialogsRequest
+                from telethon.tl.types import InputDialogPeer
+                peer_result = await client(GetPeerDialogsRequest(peers=[InputDialogPeer(entity)]))
+                if peer_result.dialogs:
+                    read_outbox_max_id = peer_result.dialogs[0].read_outbox_max_id or 0
+            except Exception:
+                pass
+            self._read_outbox_cache[rk] = (read_outbox_max_id, time.time())
 
         result = []
         for m in reversed(list(msgs)):
