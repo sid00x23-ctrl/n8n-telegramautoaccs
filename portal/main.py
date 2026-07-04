@@ -181,7 +181,11 @@ async def _proxy(method: str, path: str, json_body=None, timeout=15.0):
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.request(method, url, json=json_body)
-        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+        try:
+            content = resp.json()
+        except Exception:
+            raise HTTPException(status_code=502, detail="Userbot вернул пустой ответ")
+        return JSONResponse(content=content, status_code=resp.status_code)
     except httpx.ConnectError:
         raise HTTPException(status_code=502, detail="Userbot-сервис недоступен")
     except httpx.TimeoutException:
