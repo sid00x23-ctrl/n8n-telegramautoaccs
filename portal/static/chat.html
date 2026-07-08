@@ -400,7 +400,7 @@
     <!-- Sidebar -->
     <div class="sidebar">
       <div class="sidebar-search">
-        <input id="searchInput" class="search-input" type="text" placeholder="Поиск по имени...">
+        <input id="searchInput" class="search-input" type="text" placeholder="Поиск по имени или @никнейму...">
         <div class="filter-row">
           <button class="filter-btn active" id="filterSent" onclick="setFilter('sent')">С приветствием</button>
           <button class="filter-btn" id="filterAll" onclick="setFilter('all')">Все диалоги</button>
@@ -504,9 +504,7 @@ async function selectAccount(id) {
   if (!allAccountsMode && filterMode === 'sheet') {
     filterMode = 'sent';
   }
-  if (allAccountsMode) {
-    document.getElementById('filterAll').disabled = true;
-  } else {
+  if (!allAccountsMode) {
     document.getElementById('filterAll').disabled = false;
     document.getElementById('filterSheet').disabled = false;
   }
@@ -560,8 +558,8 @@ async function loadDialogs() {
     }
 
     if (allAccountsMode) {
-      // В режиме "Из таблицы" грузим все диалоги (sent_only=false), иначе только приветствованных
-      const sentOnly = filterMode !== 'sheet';
+      // sent_only=true только в режиме "С приветствием"
+      const sentOnly = filterMode === 'sent';
       const results = await Promise.all(
         authorizedAccounts.map(a =>
           api('GET', `/api/accounts/${a.account_id}/dialogs?limit=200&sent_only=${sentOnly}`)
@@ -597,8 +595,11 @@ async function loadDialogs() {
 }
 
 function renderDialogs() {
-  const q = document.getElementById('searchInput').value.toLowerCase();
-  let list = q ? allDialogs.filter(d => (d.name || '').toLowerCase().includes(q)) : allDialogs;
+  const q = document.getElementById('searchInput').value.toLowerCase().replace(/^@/, '');
+  let list = q ? allDialogs.filter(d =>
+    (d.name || '').toLowerCase().includes(q) ||
+    (d.username || '').toLowerCase().includes(q)
+  ) : allDialogs;
 
   // In sheet mode only show dialogs whose user_id is in the sheet
   if (filterMode === 'sheet') {
@@ -647,8 +648,11 @@ document.getElementById('searchInput').addEventListener('input', renderDialogs);
 
 // ── Open dialog ────────────────────────────────────────────────────────────
 window.openDialog = async function(idx) {
-  const q = document.getElementById('searchInput').value.toLowerCase();
-  let list = q ? allDialogs.filter(d => (d.name || '').toLowerCase().includes(q)) : allDialogs;
+  const q = document.getElementById('searchInput').value.toLowerCase().replace(/^@/, '');
+  let list = q ? allDialogs.filter(d =>
+    (d.name || '').toLowerCase().includes(q) ||
+    (d.username || '').toLowerCase().includes(q)
+  ) : allDialogs;
   if (filterMode === 'sheet') list = list.filter(d => sheetById.has(d.id));
   const dialog = list[idx];
   if (!dialog) return;
