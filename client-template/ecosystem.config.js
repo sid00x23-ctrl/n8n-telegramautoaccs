@@ -40,6 +40,7 @@ module.exports = {
         N8N_PROTOCOL: "https",
         WEBHOOK_URL: "",               // заполнить — публичный корневой URL (https://domain/)
         N8N_EDITOR_BASE_URL: "",       // заполнить — публичный URL n8n (https://domain/n8n/)
+        N8N_PATH: "/n8n/",
         N8N_DIAGNOSTICS_ENABLED: "false",
         N8N_VERSION_NOTIFICATIONS_ENABLED: "false",
         N8N_TRUST_PROXY: "true",
