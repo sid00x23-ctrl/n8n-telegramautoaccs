@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 from typing import Optional
 
 from manager import AccountManager
-from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest
+from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest
 
 
 def create_app(manager: AccountManager) -> FastAPI:
@@ -147,6 +147,26 @@ def create_app(manager: AccountManager) -> FastAPI:
             return await manager.edit_message(account_id, chat_id, message_id, body.text)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+    @app.patch("/accounts/{account_id}/typing", tags=["system"])
+    async def update_typing(account_id: str, body: TypingSettingsRequest):
+        """
+        Обновить настройки typing для аккаунта.
+
+        Body (все поля опциональны):
+        - typing_enabled: true/false — включить/выключить индикатор набора
+        - typing_min_seconds: минимальное время набора (секунды)
+        - typing_max_seconds: максимальное время набора (секунды)
+        """
+        try:
+            return manager.update_typing_settings(
+                account_id,
+                body.typing_enabled,
+                body.typing_min_seconds,
+                body.typing_max_seconds,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
 
     @app.delete("/accounts/{account_id}", tags=["system"])
     async def delete_account(account_id: str):

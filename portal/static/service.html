@@ -109,6 +109,41 @@
     /* ── 2FA ── */
     .twofa-wrap { display: flex; flex-direction: column; gap: 12px; }
 
+    /* ── Typing toggle ── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .toggle-label { font-size: 14px; color: var(--text); }
+    .toggle {
+      position: relative; width: 42px; height: 24px; flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute; inset: 0;
+      background: rgba(255,255,255,0.1);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .toggle input:checked + .toggle-track { background: var(--primary); }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 18px; height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform .2s;
+    }
+    .toggle input:checked + .toggle-track::after { transform: translateX(18px); }
+
+    .range-row { display: flex; align-items: center; gap: 10px; }
+    .range-row label { font-size: 13px; color: var(--text-2); white-space: nowrap; }
+    .range-row .input-field { width: 80px; text-align: center; }
+
     /* ── Success animation ── */
     .success-wrap {
       display: flex;
@@ -174,6 +209,13 @@
             <path d="M14 14h3M14 18h3M17 14v7"/>
           </svg>
           По QR
+        </button>
+        <button class="btn btn-ghost btn-sm" id="bulkTypingBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            <line x1="9" y1="10" x2="9" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="15" y1="10" x2="15" y2="10"/>
+          </svg>
+          Typing
         </button>
       </div>
     </div>
@@ -310,6 +352,39 @@
     </div>
   </div>
 
+  <!-- ═══════════════ MODAL: Настройки typing ═══════════════ -->
+  <div class="modal-overlay hidden" id="typingModal">
+    <div class="modal">
+      <div class="modal-title" id="typingModalTitle">Настройки набора текста</div>
+      <div class="modal-body step" style="gap:18px">
+        <div class="toggle-row">
+          <span class="toggle-label">Показывать «набирает сообщение»</span>
+          <label class="toggle">
+            <input type="checkbox" id="typingEnabled" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div id="typingTimingBlock">
+          <div class="step-title" style="margin-bottom:10px">Время набора (секунды)</div>
+          <div class="range-row">
+            <label>от</label>
+            <input class="input-field" type="number" id="typingMin" min="1" max="60" step="0.5" />
+            <label>до</label>
+            <input class="input-field" type="number" id="typingMax" min="1" max="60" step="0.5" />
+          </div>
+        </div>
+        <div class="text-err text-sm hidden" id="typingErr"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="typingCancelBtn">Отмена</button>
+        <button class="btn btn-primary" id="typingSaveBtn">
+          <span>Сохранить</span>
+          <span class="spinner hidden" id="typingSpinner"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════════════ MODAL: Подтверждение удаления ═══════════════ -->
   <div class="modal-overlay hidden" id="deleteModal">
     <div class="modal">
@@ -353,12 +428,14 @@
     }
 
     // ── Load accounts ────────────────────────────────────────────────────────
+    let allAccounts = [];
+
     async function loadAccounts() {
       const area = $('tableArea');
       area.innerHTML = `<div class="loading-state"><div class="spinner"></div> Загрузка...</div>`;
       try {
-        const accounts = await api('GET', '/api/accounts');
-        renderTable(accounts);
+        allAccounts = await api('GET', '/api/accounts');
+        renderTable(allAccounts);
       } catch (e) {
         area.innerHTML = `<div class="empty-state"><p style="color:var(--error)">${e.message}</p></div>`;
         $('accountsCount').textContent = 'Ошибка загрузки';
@@ -403,7 +480,19 @@
                   <td><span class="text-muted text-sm">${acc.username ? '@'+esc(acc.username) : '—'}</span></td>
                   <td>${statusBadge(acc)}</td>
                   <td style="text-align:right">
-                    <button class="btn btn-danger btn-sm" data-del="${esc(acc.account_id)}">Выйти</button>
+                    <div style="display:flex;gap:6px;justify-content:flex-end">
+                      <button class="btn btn-ghost btn-sm" data-typing="${esc(acc.account_id)}"
+                        data-typing-enabled="${acc.typing_enabled}"
+                        data-typing-min="${acc.typing_min_seconds}"
+                        data-typing-max="${acc.typing_max_seconds}"
+                        title="Настройки набора">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                          <line x1="9" y1="10" x2="9" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="15" y1="10" x2="15" y2="10"/>
+                        </svg>
+                      </button>
+                      <button class="btn btn-danger btn-sm" data-del="${esc(acc.account_id)}">Выйти</button>
+                    </div>
                   </td>
                 </tr>
               `).join('')}
@@ -413,6 +502,15 @@
 
       area.querySelectorAll('[data-del]').forEach(btn => {
         btn.addEventListener('click', () => openDeleteModal(btn.dataset.del));
+      });
+
+      area.querySelectorAll('[data-typing]').forEach(btn => {
+        btn.addEventListener('click', () => openTypingModal(
+          btn.dataset.typing,
+          btn.dataset.typingEnabled === 'true',
+          parseFloat(btn.dataset.typingMin),
+          parseFloat(btn.dataset.typingMax),
+        ));
       });
     }
 
@@ -669,7 +767,83 @@
       }
     });
 
-    // ── Delete modal ─────────────────────────────────────────────────────────
+    // ── Typing modal ──────────────────────────────────────────────────────────
+    let typingAccId = null;   // null = bulk-режим (все аккаунты)
+
+    function openTypingModal(accId, enabled, minSec, maxSec) {
+      typingAccId = accId;
+      $('typingModalTitle').textContent = accId
+        ? `Настройки набора — ${accId}`
+        : 'Настройки набора — все аккаунты';
+      $('typingEnabled').checked = enabled;
+      $('typingMin').value = minSec;
+      $('typingMax').value = maxSec;
+      $('typingTimingBlock').style.opacity = enabled ? '1' : '0.4';
+      $('typingTimingBlock').style.pointerEvents = enabled ? '' : 'none';
+      hideEl('typingErr');
+      showEl('typingModal');
+    }
+
+    $('bulkTypingBtn').addEventListener('click', () => {
+      const first = allAccounts[0];
+      openTypingModal(
+        null,
+        first ? first.typing_enabled : true,
+        first ? first.typing_min_seconds : 7,
+        first ? first.typing_max_seconds : 10,
+      );
+    });
+
+    $('typingEnabled').addEventListener('change', () => {
+      const on = $('typingEnabled').checked;
+      $('typingTimingBlock').style.opacity = on ? '1' : '0.4';
+      $('typingTimingBlock').style.pointerEvents = on ? '' : 'none';
+    });
+
+    $('typingCancelBtn').addEventListener('click', () => { hideEl('typingModal'); });
+
+    $('typingSaveBtn').addEventListener('click', async () => {
+      const minVal = parseFloat($('typingMin').value);
+      const maxVal = parseFloat($('typingMax').value);
+      if (isNaN(minVal) || isNaN(maxVal) || minVal < 1 || maxVal < minVal) {
+        $('typingErr').textContent = 'Укажите корректный диапазон (мин ≥ 1, макс ≥ мин)';
+        showEl('typingErr'); return;
+      }
+      hideEl('typingErr');
+      setSpinner('typingSpinner', 'typingSaveBtn', true);
+      const body = {
+        typing_enabled: $('typingEnabled').checked,
+        typing_min_seconds: minVal,
+        typing_max_seconds: maxVal,
+      };
+      try {
+        if (typingAccId) {
+          // Один аккаунт
+          await api('PATCH', `/api/accounts/${encodeURIComponent(typingAccId)}/typing`, body);
+        } else {
+          // Все аккаунты параллельно
+          await Promise.all(
+            allAccounts.map(acc =>
+              api('PATCH', `/api/accounts/${encodeURIComponent(acc.account_id)}/typing`, body)
+            )
+          );
+        }
+        toast(typingAccId ? 'Настройки сохранены' : `Применено к ${allAccounts.length} аккаунтам`, 'ok');
+        hideEl('typingModal');
+        loadAccounts();
+      } catch (e) {
+        $('typingErr').textContent = e.message;
+        showEl('typingErr');
+      } finally {
+        setSpinner('typingSpinner', 'typingSaveBtn', false);
+      }
+    });
+
+    $('typingModal').addEventListener('click', (e) => {
+      if (e.target === $('typingModal')) hideEl('typingModal');
+    });
+
+    // ── Delete modal ──────────────────────────────────────────────────────────
     let deleteAccId = null;
 
     function openDeleteModal(accId) {
@@ -696,11 +870,12 @@
     });
 
     // Close modals on overlay click
-    ['phoneModal','qrModal','deleteModal'].forEach(id => {
+    ['phoneModal','qrModal','deleteModal','typingModal'].forEach(id => {
       $(id).addEventListener('click', (e) => {
         if (e.target === $(id)) {
           if (id === 'phoneModal') closePhoneModal();
           else if (id === 'qrModal') closeQrModal();
+          else if (id === 'typingModal') hideEl('typingModal');
           else { hideEl('deleteModal'); deleteAccId = null; }
         }
       });

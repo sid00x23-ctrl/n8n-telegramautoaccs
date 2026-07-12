@@ -41,3 +41,12 @@ class AccountConfig(BaseModel):
     name: Optional[str] = None          # имя из Telegram
     username: Optional[str] = None      # @username из Telegram
     banned_until: Optional[datetime] = None  # UTC datetime спам-бана; None = не забанен
+    typing_enabled: bool = True         # показывать ли индикатор набора перед отправкой
+    typing_min_seconds: float = 7.0     # минимальное время набора (секунд)
+    typing_max_seconds: float = 10.0    # максимальное время набора (секунд)
+
+
+class TypingSettingsRequest(BaseModel):
+    typing_enabled: Optional[bool] = None
+    typing_min_seconds: Optional[float] = None
+    typing_max_seconds: Optional[float] = None

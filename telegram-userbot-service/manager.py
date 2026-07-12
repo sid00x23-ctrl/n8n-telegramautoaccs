@@ -550,16 +550,20 @@ class AccountManager:
                 except Exception:
                     pass
 
-                # 2. Пауза перед набором
-                await asyncio.sleep(2)
+                cfg = self.configs.get(account_id)
+                if cfg and cfg.typing_enabled:
+                    # 2. Пауза перед набором
+                    await asyncio.sleep(2)
 
-                # 3. Typing 7–10 секунд
-                typing_duration = random.uniform(7, 10)
-                try:
-                    async with client.action(entity, 'typing'):
-                        await asyncio.sleep(typing_duration)
-                except Exception:
-                    pass
+                    # 3. Typing (длительность из настроек аккаунта)
+                    t_min = cfg.typing_min_seconds
+                    t_max = max(cfg.typing_max_seconds, t_min)
+                    typing_duration = random.uniform(t_min, t_max)
+                    try:
+                        async with client.action(entity, 'typing'):
+                            await asyncio.sleep(typing_duration)
+                    except Exception:
+                        pass
 
             # 4. Отправляем
             await client.send_message(entity, text)
@@ -582,6 +586,34 @@ class AccountManager:
         except Exception as e:
             await self._send_delivery_callback("error", account_id, chat_id, str(e))
             raise ValueError(f"Ошибка отправки: {e}") from e
+
+    # ------------------------------------------------------------------ #
+    #  Настройки typing                                                    #
+    # ------------------------------------------------------------------ #
+
+    def update_typing_settings(
+        self,
+        account_id: str,
+        typing_enabled: Optional[bool] = None,
+        typing_min_seconds: Optional[float] = None,
+        typing_max_seconds: Optional[float] = None,
+    ) -> dict:
+        cfg = self.configs.get(account_id)
+        if cfg is None:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        if typing_enabled is not None:
+            cfg.typing_enabled = typing_enabled
+        if typing_min_seconds is not None:
+            cfg.typing_min_seconds = typing_min_seconds
+        if typing_max_seconds is not None:
+            cfg.typing_max_seconds = typing_max_seconds
+        self._save_configs()
+        return {
+            "account_id": account_id,
+            "typing_enabled": cfg.typing_enabled,
+            "typing_min_seconds": cfg.typing_min_seconds,
+            "typing_max_seconds": cfg.typing_max_seconds,
+        }
 
     # ------------------------------------------------------------------ #
     #  Выход из аккаунта                                                   #
@@ -796,5 +828,8 @@ class AccountManager:
                 "available": authorized and not is_banned,
                 "banned_until": banned_until.isoformat() if banned_until else None,
                 "pending_auth": account_id in self._auth_state,
+                "typing_enabled": cfg.typing_enabled if cfg else True,
+                "typing_min_seconds": cfg.typing_min_seconds if cfg else 7.0,
+                "typing_max_seconds": cfg.typing_max_seconds if cfg else 10.0,
             })
         return result
