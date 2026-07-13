@@ -36,6 +36,12 @@ cd "$REPO_DIR/n8n-nodes"
 npm install
 npm run build
 
+echo "==> Ограничиваем journald (макс 50M на диске)"
+mkdir -p /etc/systemd/journald.conf.d
+cp "$REPO_DIR/scripts/journald-limit.conf" /etc/systemd/journald.conf.d/limit.conf
+systemctl restart systemd-journald
+journalctl --vacuum-size=50M
+
 echo "==> Настраиваем PM2 автозапуск при перезагрузке"
 pm2 startup
 
