@@ -44,9 +44,14 @@ class AccountConfig(BaseModel):
     typing_enabled: bool = True         # показывать ли индикатор набора перед отправкой
     typing_min_seconds: float = 7.0     # минимальное время набора (секунд)
     typing_max_seconds: float = 10.0    # максимальное время набора (секунд)
+    link_preview_disabled: bool = False # отключить превью ссылок в исходящих сообщениях
 
 
 class TypingSettingsRequest(BaseModel):
     typing_enabled: Optional[bool] = None
     typing_min_seconds: Optional[float] = None
     typing_max_seconds: Optional[float] = None
+
+
+class LinkPreviewRequest(BaseModel):
+    link_preview_disabled: Optional[bool] = None

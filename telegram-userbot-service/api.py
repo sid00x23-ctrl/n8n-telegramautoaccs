@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 from typing import Optional
 
 from manager import AccountManager
-from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest
+from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest
 
 
 def create_app(manager: AccountManager) -> FastAPI:
@@ -165,6 +165,19 @@ def create_app(manager: AccountManager) -> FastAPI:
                 body.typing_min_seconds,
                 body.typing_max_seconds,
             )
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+
+    @app.patch("/accounts/{account_id}/link_preview", tags=["system"])
+    async def update_link_preview(account_id: str, body: LinkPreviewRequest):
+        """
+        Обновить настройку превью ссылок для аккаунта.
+
+        Body:
+        - link_preview_disabled: true/false — отключить/включить превью ссылок
+        """
+        try:
+            return manager.update_link_preview(account_id, body.link_preview_disabled)
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
 

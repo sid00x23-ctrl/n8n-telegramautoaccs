@@ -566,7 +566,9 @@ class AccountManager:
                         pass
 
             # 4. Отправляем
-            await client.send_message(entity, text)
+            cfg = self.configs.get(account_id)
+            link_preview = not (cfg.link_preview_disabled if cfg else False)
+            await client.send_message(entity, text, link_preview=link_preview)
             await self._send_delivery_callback("sent", account_id, chat_id)
             self._sent_chats.setdefault(account_id, set()).add(chat_id)
             self._save_sent_chats()
@@ -613,6 +615,22 @@ class AccountManager:
             "typing_enabled": cfg.typing_enabled,
             "typing_min_seconds": cfg.typing_min_seconds,
             "typing_max_seconds": cfg.typing_max_seconds,
+        }
+
+    # ------------------------------------------------------------------ #
+    #  Настройки превью ссылок                                             #
+    # ------------------------------------------------------------------ #
+
+    def update_link_preview(self, account_id: str, link_preview_disabled: Optional[bool] = None) -> dict:
+        cfg = self.configs.get(account_id)
+        if cfg is None:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        if link_preview_disabled is not None:
+            cfg.link_preview_disabled = link_preview_disabled
+        self._save_configs()
+        return {
+            "account_id": account_id,
+            "link_preview_disabled": cfg.link_preview_disabled,
         }
 
     # ------------------------------------------------------------------ #
@@ -831,5 +849,6 @@ class AccountManager:
                 "typing_enabled": cfg.typing_enabled if cfg else True,
                 "typing_min_seconds": cfg.typing_min_seconds if cfg else 7.0,
                 "typing_max_seconds": cfg.typing_max_seconds if cfg else 10.0,
+                "link_preview_disabled": cfg.link_preview_disabled if cfg else False,
             })
         return result
