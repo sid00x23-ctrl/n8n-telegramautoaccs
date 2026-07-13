@@ -263,8 +263,7 @@
   <script type="module">
     import { guardAuth, logout } from '/static/js/api.js';
 
-    const data = await guardAuth().catch(() => null);
-    if (!data) return;
+    const data = await guardAuth();
 
     document.getElementById('usernameLabel').textContent = data.username;
     document.getElementById('greetUser').textContent = `, ${data.username}`;
