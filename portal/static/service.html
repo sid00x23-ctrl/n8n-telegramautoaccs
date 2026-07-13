@@ -217,6 +217,13 @@
           </svg>
           Typing
         </button>
+        <button class="btn btn-ghost btn-sm" id="bulkLinkPreviewBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+          Превью
+        </button>
       </div>
     </div>
 
@@ -385,6 +392,33 @@
     </div>
   </div>
 
+  <!-- ═══════════════ MODAL: Превью ссылок ═══════════════ -->
+  <div class="modal-overlay hidden" id="linkPreviewModal">
+    <div class="modal">
+      <div class="modal-title" id="linkPreviewModalTitle">Превью ссылок</div>
+      <div class="modal-body step" style="gap:18px">
+        <div class="toggle-row">
+          <span class="toggle-label">Отключить превью ссылок</span>
+          <label class="toggle">
+            <input type="checkbox" id="linkPreviewDisabled" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);margin:0">
+          Когда включено — ссылки в исходящих сообщениях не будут раскрываться в карточку сайта.
+        </p>
+        <div class="text-err text-sm hidden" id="linkPreviewErr"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="linkPreviewCancelBtn">Отмена</button>
+        <button class="btn btn-primary" id="linkPreviewSaveBtn">
+          <span>Сохранить</span>
+          <span class="spinner hidden" id="linkPreviewSpinner"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════════════ MODAL: Подтверждение удаления ═══════════════ -->
   <div class="modal-overlay hidden" id="deleteModal">
     <div class="modal">
@@ -491,6 +525,14 @@
                           <line x1="9" y1="10" x2="9" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="15" y1="10" x2="15" y2="10"/>
                         </svg>
                       </button>
+                      <button class="btn btn-ghost btn-sm" data-preview="${esc(acc.account_id)}"
+                        data-preview-disabled="${acc.link_preview_disabled}"
+                        title="Превью ссылок${acc.link_preview_disabled ? ' (откл.)' : ''}">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${acc.link_preview_disabled ? '#ef4444' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                      </button>
                       <button class="btn btn-danger btn-sm" data-del="${esc(acc.account_id)}">Выйти</button>
                     </div>
                   </td>
@@ -510,6 +552,13 @@
           btn.dataset.typingEnabled === 'true',
           parseFloat(btn.dataset.typingMin),
           parseFloat(btn.dataset.typingMax),
+        ));
+      });
+
+      area.querySelectorAll('[data-preview]').forEach(btn => {
+        btn.addEventListener('click', () => openLinkPreviewModal(
+          btn.dataset.preview,
+          btn.dataset.previewDisabled === 'true',
         ));
       });
     }
@@ -843,6 +892,54 @@
       if (e.target === $('typingModal')) hideEl('typingModal');
     });
 
+    // ── Link preview modal ────────────────────────────────────────────────────
+    let linkPreviewAccId = null;
+
+    function openLinkPreviewModal(accId, disabled) {
+      linkPreviewAccId = accId;
+      $('linkPreviewModalTitle').textContent = accId
+        ? `Превью ссылок — ${accId}`
+        : 'Превью ссылок — все аккаунты';
+      $('linkPreviewDisabled').checked = disabled;
+      hideEl('linkPreviewErr');
+      showEl('linkPreviewModal');
+    }
+
+    $('bulkLinkPreviewBtn').addEventListener('click', () => {
+      const first = allAccounts[0];
+      openLinkPreviewModal(null, first ? !!first.link_preview_disabled : false);
+    });
+
+    $('linkPreviewCancelBtn').addEventListener('click', () => { hideEl('linkPreviewModal'); });
+
+    $('linkPreviewSaveBtn').addEventListener('click', async () => {
+      setSpinner('linkPreviewSpinner', 'linkPreviewSaveBtn', true);
+      const body = { link_preview_disabled: $('linkPreviewDisabled').checked };
+      try {
+        if (linkPreviewAccId) {
+          await api('PATCH', `/api/accounts/${encodeURIComponent(linkPreviewAccId)}/link_preview`, body);
+        } else {
+          await Promise.all(
+            allAccounts.map(acc =>
+              api('PATCH', `/api/accounts/${encodeURIComponent(acc.account_id)}/link_preview`, body)
+            )
+          );
+        }
+        toast(linkPreviewAccId ? 'Настройки сохранены' : `Применено к ${allAccounts.length} аккаунтам`, 'ok');
+        hideEl('linkPreviewModal');
+        loadAccounts();
+      } catch (e) {
+        $('linkPreviewErr').textContent = e.message;
+        showEl('linkPreviewErr');
+      } finally {
+        setSpinner('linkPreviewSpinner', 'linkPreviewSaveBtn', false);
+      }
+    });
+
+    $('linkPreviewModal').addEventListener('click', (e) => {
+      if (e.target === $('linkPreviewModal')) hideEl('linkPreviewModal');
+    });
+
     // ── Delete modal ──────────────────────────────────────────────────────────
     let deleteAccId = null;
 
@@ -870,12 +967,13 @@
     });
 
     // Close modals on overlay click
-    ['phoneModal','qrModal','deleteModal','typingModal'].forEach(id => {
+    ['phoneModal','qrModal','deleteModal','typingModal','linkPreviewModal'].forEach(id => {
       $(id).addEventListener('click', (e) => {
         if (e.target === $(id)) {
           if (id === 'phoneModal') closePhoneModal();
           else if (id === 'qrModal') closeQrModal();
           else if (id === 'typingModal') hideEl('typingModal');
+          else if (id === 'linkPreviewModal') hideEl('linkPreviewModal');
           else { hideEl('deleteModal'); deleteAccId = null; }
         }
       });
