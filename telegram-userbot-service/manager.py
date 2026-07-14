@@ -512,7 +512,9 @@ class AccountManager:
             raise ValueError(f"Аккаунт '{account_id}' не авторизован")
 
         cfg = self.configs.get(account_id)
-        if cfg and cfg.banned_until:
+        # Для rate_limited (рассылка новым) — блокируем при бане.
+        # Для прямых отправок в существующие диалоги — разрешаем, Telegram сам решит.
+        if rate_limited and cfg and cfg.banned_until:
             remaining = cfg.banned_until - datetime.now(timezone.utc)
             if remaining.total_seconds() > 0:
                 raise ValueError(

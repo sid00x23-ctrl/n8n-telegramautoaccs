@@ -481,9 +481,19 @@ async function loadAccounts() {
     }
     sel.innerHTML =
       '<option value="__all__">Все аккаунты</option>' +
-      authorizedAccounts.map(a =>
-        `<option value="${a.account_id}">${a.name || a.account_id}${a.username ? ' · @' + a.username : ''}</option>`
-      ).join('');
+      authorizedAccounts.map(a => {
+        let label = a.name || a.account_id;
+        if (a.username) label += ' · @' + a.username;
+        if (a.banned_until) {
+          const diff = new Date(a.banned_until) - new Date();
+          if (diff > 0) {
+            const h = Math.floor(diff / 3_600_000);
+            const m = Math.floor((diff % 3_600_000) / 60_000);
+            label += ` · ⚠ спам-бан ${h > 0 ? h + 'ч ' : ''}${m}м`;
+          }
+        }
+        return `<option value="${a.account_id}">${label}</option>`;
+      }).join('');
     console.log('[loadAccounts] sel.value after innerHTML:', sel.value);
     await selectAccount('__all__');
     console.log('[loadAccounts] after selectAccount(__all__), allAccountsMode:', allAccountsMode, 'currentAccount:', currentAccount);
