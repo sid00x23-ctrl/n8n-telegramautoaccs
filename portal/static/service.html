@@ -455,10 +455,28 @@
       $(btnId).disabled = on;
     }
 
+    function banTimeLeft(isoDate) {
+      const diff = new Date(isoDate) - new Date();
+      if (diff <= 0) return null;
+      const h = Math.floor(diff / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      return h > 0 ? `${h}ч ${m}м` : `${m}м`;
+    }
+
     function statusBadge(acc) {
-      if (acc.authorized)  return `<span class="badge badge-ok"><span class="badge-dot"></span>Подключён</span>`;
-      if (acc.connected)   return `<span class="badge badge-warn"><span class="badge-dot"></span>Соединение</span>`;
-      return `<span class="badge badge-err"><span class="badge-dot"></span>Отключён</span>`;
+      let base;
+      if (acc.authorized)      base = `<span class="badge badge-ok"><span class="badge-dot"></span>Подключён</span>`;
+      else if (acc.connected)  base = `<span class="badge badge-warn"><span class="badge-dot"></span>Соединение</span>`;
+      else                     base = `<span class="badge badge-err"><span class="badge-dot"></span>Отключён</span>`;
+
+      if (acc.banned_until) {
+        const left = banTimeLeft(acc.banned_until);
+        if (left) {
+          const ban = `<span class="badge badge-err" data-ban-until="${esc(acc.banned_until)}"><span class="badge-dot"></span>Спам-бан · ${left}</span>`;
+          return `<div style="display:flex;flex-direction:column;gap:4px">${base}${ban}</div>`;
+        }
+      }
+      return base;
     }
 
     // ── Load accounts ────────────────────────────────────────────────────────
@@ -978,6 +996,19 @@
         }
       });
     });
+
+    // ── Спам-бан: живой обратный отсчёт ──────────────────────────────────────
+    setInterval(() => {
+      document.querySelectorAll('[data-ban-until]').forEach(el => {
+        const left = banTimeLeft(el.dataset.banUntil);
+        const dot = '<span class="badge-dot"></span>';
+        if (left) {
+          el.innerHTML = dot + 'Спам-бан · ' + left;
+        } else {
+          loadAccounts(); // бан истёк — обновить таблицу
+        }
+      });
+    }, 60_000);
 
     // ── Init ─────────────────────────────────────────────────────────────────
     loadAccounts();
