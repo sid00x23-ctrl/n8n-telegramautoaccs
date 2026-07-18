@@ -636,6 +636,21 @@ class AccountManager:
         }
 
     # ------------------------------------------------------------------ #
+    #  Спам-бан: ручное обновление даты снятия                            #
+    # ------------------------------------------------------------------ #
+
+    def set_spam_ban(self, account_id: str, banned_until) -> dict:
+        cfg = self.configs.get(account_id)
+        if cfg is None:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        cfg.banned_until = banned_until
+        self._save_configs()
+        return {
+            "account_id": account_id,
+            "banned_until": banned_until.isoformat() if banned_until else None,
+        }
+
+    # ------------------------------------------------------------------ #
     #  Выход из аккаунта                                                   #
     # ------------------------------------------------------------------ #
 

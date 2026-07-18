@@ -55,3 +55,7 @@ class TypingSettingsRequest(BaseModel):
 
 class LinkPreviewRequest(BaseModel):
     link_preview_disabled: Optional[bool] = None
+
+
+class SpamBanRequest(BaseModel):
+    banned_until: Optional[datetime] = None  # UTC datetime; None — снять бан

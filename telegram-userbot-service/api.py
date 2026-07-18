@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 from typing import Optional
 
 from manager import AccountManager
-from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest
+from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest
 
 
 def create_app(manager: AccountManager) -> FastAPI:
@@ -165,6 +165,17 @@ def create_app(manager: AccountManager) -> FastAPI:
                 body.typing_min_seconds,
                 body.typing_max_seconds,
             )
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+
+    @app.patch("/accounts/{account_id}/spam_ban", tags=["system"])
+    async def set_spam_ban(account_id: str, body: SpamBanRequest):
+        """
+        Обновить дату снятия спам-бана.
+        Body: {"banned_until": "2026-07-23T15:05:00Z"} или {"banned_until": null} для снятия.
+        """
+        try:
+            return manager.set_spam_ban(account_id, body.banned_until)
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
 
