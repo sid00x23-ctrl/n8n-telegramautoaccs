@@ -424,8 +424,8 @@
           <button class="new-chat-btn" id="newChatBtn" title="Открыть чат по @никнейму">+</button>
         </div>
         <div class="filter-row">
-          <button class="filter-btn active" id="filterSent" onclick="setFilter('sent')">С приветствием</button>
-          <button class="filter-btn" id="filterAll" onclick="setFilter('all')">Все диалоги</button>
+          <button class="filter-btn" id="filterSent" onclick="setFilter('sent')">С приветствием</button>
+          <button class="filter-btn active" id="filterAll" onclick="setFilter('all')">Все диалоги</button>
           <button class="filter-btn" id="filterSheet" onclick="setFilter('sheet')">Из таблицы</button>
         </div>
       </div>
@@ -484,7 +484,7 @@ let currentChat    = null;
 let allDialogs     = [];
 let lastMsgId      = 0;
 let pollTimer      = null;
-let filterMode     = 'sent';   // 'sent' | 'all' | 'sheet'
+let filterMode     = 'all';    // 'sent' | 'all' | 'sheet'
 let allAccountsMode = false;
 let authorizedAccounts = [];
 let sheetContacts  = [];       // [{user_id, username, name, account, status}]
