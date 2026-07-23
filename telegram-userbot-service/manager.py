@@ -770,35 +770,29 @@ class AccountManager:
         if not client.is_connected():
             raise ValueError(f"Аккаунт '{account_id}' не подключён к Telegram")
         sent_ids = self._sent_chats.get(account_id, set())
-        result = []
         try:
-            # iter_dialogs пагинирует сам и останавливается как только набрали нужное,
-            # не нужно грузить всё сразу — экономим время и память
-            async for d in client.iter_dialogs():
-                entity = d.entity
-                # только личные чаты (User), группы и каналы пропускаем
-                if not isinstance(entity, User):
-                    continue
-                if sent_only and d.id not in sent_ids:
-                    continue
-                last_msg = d.message
-                status = getattr(entity, "status", None)
-                result.append({
-                    "id": d.id,
-                    "name": d.name or str(d.id),
-                    "username": getattr(entity, "username", None),
-                    "unread_count": d.unread_count,
-                    "last_online": self._parse_status(status) if status is not None else None,
-                    "last_message": {
-                        "text": (last_msg.text or "")[:120],
-                        "date": last_msg.date.isoformat(),
-                        "out": last_msg.out,
-                    } if last_msg else None,
-                })
-                if len(result) >= limit:
-                    break
+            dialogs = await client.get_dialogs(limit=limit)
         except Exception as e:
             raise ValueError(f"Ошибка получения диалогов: {e}") from e
+        result = []
+        for d in dialogs:
+            if sent_only and d.id not in sent_ids:
+                continue
+            entity = d.entity
+            last_msg = d.message
+            status = getattr(entity, "status", None)
+            result.append({
+                "id": d.id,
+                "name": d.name or str(d.id),
+                "username": getattr(entity, "username", None),
+                "unread_count": d.unread_count,
+                "last_online": self._parse_status(status) if status is not None else None,
+                "last_message": {
+                    "text": (last_msg.text or "")[:120],
+                    "date": last_msg.date.isoformat(),
+                    "out": last_msg.out,
+                } if last_msg else None,
+            })
         return result
 
     async def resolve_username(self, account_id: str, username: str) -> dict:
