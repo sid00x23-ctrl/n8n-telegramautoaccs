@@ -278,6 +278,12 @@ async def proxy_edit_message(account_id: str, chat_id: int, message_id: int, req
     return await _proxy("PATCH", f"/accounts/{account_id}/dialogs/{chat_id}/messages/{message_id}", json_body=body)
 
 
+@app.get("/api/accounts/{account_id}/resolve/{username}")
+async def proxy_resolve_username(account_id: str, username: str, request: Request):
+    require_auth(request)
+    return await _proxy("GET", f"/accounts/{account_id}/resolve/{username}", timeout=15.0)
+
+
 @app.patch("/api/accounts/{account_id}/typing")
 async def update_typing(account_id: str, request: Request):
     require_auth(request)

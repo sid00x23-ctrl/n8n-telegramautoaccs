@@ -619,7 +619,20 @@ function renderDialogs() {
   const el = document.getElementById('dialogsList');
 
   if (list.length === 0) {
-    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-3);font-size:13px">Диалогов нет</div>';
+    const rawQ = document.getElementById('searchInput').value.trim();
+    if (rawQ.startsWith('@') && rawQ.length > 1) {
+      const uname = rawQ.slice(1);
+      el.innerHTML = `<div class="dialog-item dialog-new-chat" data-uname="${esc(uname)}">
+        <div class="d-avatar" style="background:linear-gradient(135deg,#667eea,#764ba2)">+</div>
+        <div class="d-info">
+          <div class="d-name">Открыть чат с @${esc(uname)}</div>
+          <div class="d-preview">Найти в Telegram и написать</div>
+        </div>
+      </div>`;
+      el.querySelector('.dialog-new-chat').addEventListener('click', () => openChatByUsername(uname));
+    } else {
+      el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-3);font-size:13px">Диалогов нет</div>';
+    }
     return;
   }
 
@@ -935,6 +948,39 @@ window.resendToN8n = async function(msgId, btn) {
   } finally {
     btn.disabled = false;
   }
+};
+
+// ── Open chat by @username (new dialog) ────────────────────────────────────
+window.openChatByUsername = async function(username) {
+  const accountId = currentAccount || authorizedAccounts[0]?.account_id;
+  if (!accountId) { toast('Нет авторизованного аккаунта', 'err'); return; }
+
+  const el = document.getElementById('dialogsList');
+  el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-3);font-size:13px">Поиск пользователя...</div>';
+
+  try {
+    const user = await api('GET', `/api/accounts/${accountId}/resolve/${encodeURIComponent(username)}`);
+
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+
+    currentAccount = accountId;
+    currentChat    = { id: user.id, name: user.name, username: user.username };
+    lastMsgId      = 0;
+
+    document.getElementById('chatEmpty').style.display = 'none';
+    document.getElementById('chatActive').classList.add('visible');
+    document.getElementById('chatAvatar').textContent = (user.name || '?')[0].toUpperCase();
+    document.getElementById('chatName').textContent   = user.name || ('@' + username);
+    document.getElementById('chatSub').textContent    = '@' + user.username;
+    document.getElementById('msgsBody').innerHTML =
+      '<div style="text-align:center;color:var(--text-3);font-size:13px;padding:40px">Загрузка...</div>';
+
+    await loadMessages(true);
+    pollTimer = setInterval(() => loadMessages(false), 5000);
+  } catch (e) {
+    toast('Пользователь не найден: ' + e.message, 'err');
+  }
+  renderDialogs();
 };
 
 // ── Init ───────────────────────────────────────────────────────────────────

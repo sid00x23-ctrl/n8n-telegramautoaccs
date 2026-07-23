@@ -795,6 +795,29 @@ class AccountManager:
             })
         return result
 
+    async def resolve_username(self, account_id: str, username: str) -> dict:
+        if account_id not in self.clients:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        if not self.authorized.get(account_id):
+            raise ValueError(f"Аккаунт '{account_id}' не авторизован")
+        client = self.clients[account_id]
+        clean = username.strip().lstrip("@")
+        if not clean:
+            raise ValueError("Username не указан")
+        try:
+            entity = await client.get_entity(clean)
+        except Exception as e:
+            raise ValueError(f"Пользователь @{clean} не найден: {e}") from e
+        name = " ".join(filter(None, [
+            getattr(entity, "first_name", "") or "",
+            getattr(entity, "last_name", "") or "",
+        ])).strip() or clean
+        return {
+            "id": entity.id,
+            "name": name,
+            "username": getattr(entity, "username", None) or clean,
+        }
+
     async def get_messages(self, account_id: str, chat_id: int, limit: int = 50, offset_id: int = 0) -> list[dict]:
         if account_id not in self.clients:
             raise ValueError(f"Аккаунт '{account_id}' не найден")
