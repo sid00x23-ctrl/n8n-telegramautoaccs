@@ -458,10 +458,13 @@
       <div class="modal-title" id="proxyModalTitle">Прокси</div>
       <div class="modal-body step" style="gap:14px">
         <p style="font-size:13px;color:var(--text-2);margin:0">
-          Формат: <code>socks5://user:pass@host:port</code><br>
-          Поддерживается: socks5, socks4, http. Оставьте пустым — без прокси.
+          Форматы:<br>
+          <code>1.2.3.4:8080</code> — HTTP без пароля<br>
+          <code>user:pass@1.2.3.4:8080</code> — HTTP с паролем<br>
+          <code>socks5://user:pass@1.2.3.4:1080</code> — SOCKS5<br>
+          Оставьте пустым — без прокси.
         </p>
-        <input class="input-field" type="text" id="proxyInput" placeholder="socks5://user:pass@1.2.3.4:1080" autocomplete="off" spellcheck="false" />
+        <input class="input-field" type="text" id="proxyInput" placeholder="185.162.231.73:80" autocomplete="off" spellcheck="false" />
         <div class="text-err text-sm hidden" id="proxyErr"></div>
       </div>
       <div class="modal-footer">

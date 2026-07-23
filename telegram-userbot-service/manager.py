@@ -35,9 +35,18 @@ SENT_CHATS_FILE = Path("sent_chats.json")
 
 
 def _parse_proxy(proxy_url: Optional[str]):
-    """Парсит прокси URL в tuple для Telethon: (type, host, port, rdns, user, pass)."""
+    """Парсит прокси URL в tuple для Telethon: (type, host, port, rdns, user, pass).
+    Принимает форматы:
+      ip:port                          → HTTP без авторизации
+      user:pass@ip:port                → HTTP с авторизацией
+      socks5://user:pass@ip:port       → SOCKS5
+      http://ip:port                   → HTTP
+    """
     if not proxy_url:
         return None
+    # Голый ip:port или user:pass@ip:port — добавляем схему http://
+    if "://" not in proxy_url:
+        proxy_url = "http://" + proxy_url
     p = urlparse(proxy_url)
     scheme = p.scheme.lower()
     if scheme == "socks5":
