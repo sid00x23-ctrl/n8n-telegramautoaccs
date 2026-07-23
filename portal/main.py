@@ -247,6 +247,12 @@ async def proxy_dialogs(account_id: str, request: Request, limit: int = 30, sent
     return await _proxy("GET", f"/accounts/{account_id}/dialogs?limit={limit}&sent_only={str(sent_only).lower()}", timeout=60.0)
 
 
+@app.post("/api/accounts/{account_id}/dialogs/{chat_id}/read")
+async def proxy_mark_read(account_id: str, chat_id: int, request: Request):
+    require_auth(request)
+    return await _proxy("POST", f"/accounts/{account_id}/dialogs/{chat_id}/read")
+
+
 @app.get("/api/accounts/{account_id}/dialogs/{chat_id}/messages")
 async def proxy_messages(account_id: str, chat_id: int, request: Request, limit: int = 50, offset_id: int = 0):
     require_auth(request)

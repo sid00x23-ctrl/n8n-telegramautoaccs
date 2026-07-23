@@ -823,8 +823,16 @@ window.openDialog = async function(idx) {
 
   showChat();
   await loadMessages(true);
-  pollTimer = setInterval(() => loadMessages(false), 5000);
+  markRead();
+  pollTimer = setInterval(() => { loadMessages(false); markRead(); }, 5000);
 };
+
+async function markRead() {
+  if (!currentAccount || !currentChat) return;
+  try {
+    await api('POST', `/api/accounts/${currentAccount}/dialogs/${currentChat.id}/read`);
+  } catch (_) {}
+}
 
 // ── Messages ───────────────────────────────────────────────────────────────
 window.loadMessages = async function(scrollToBottom = true) {
