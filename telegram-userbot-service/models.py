@@ -45,6 +45,7 @@ class AccountConfig(BaseModel):
     typing_min_seconds: float = 7.0     # минимальное время набора (секунд)
     typing_max_seconds: float = 10.0    # максимальное время набора (секунд)
     link_preview_disabled: bool = False # отключить превью ссылок в исходящих сообщениях
+    spam_ban_auto: bool = True          # автоматически выставлять спам-бан при PeerFloodError
 
 
 class TypingSettingsRequest(BaseModel):
@@ -59,3 +60,7 @@ class LinkPreviewRequest(BaseModel):
 
 class SpamBanRequest(BaseModel):
     banned_until: Optional[datetime] = None  # UTC datetime; None — снять бан
+
+
+class SpamBanAutoRequest(BaseModel):
+    enabled: bool  # True — автоматически ставить бан при PeerFloodError, False — не ставить

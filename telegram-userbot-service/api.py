@@ -9,7 +9,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 from manager import AccountManager
-from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest
+from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest
 
 
 def create_app(manager: AccountManager) -> FastAPI:
@@ -186,6 +186,18 @@ def create_app(manager: AccountManager) -> FastAPI:
         """
         try:
             return manager.set_spam_ban(account_id, body.banned_until)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+
+    @app.patch("/accounts/{account_id}/spam_ban_auto", tags=["system"])
+    async def update_spam_ban_auto(account_id: str, body: SpamBanAutoRequest):
+        """
+        Включить/выключить автоматическое выставление спам-бана при PeerFloodError.
+
+        Body: {"enabled": true/false}
+        """
+        try:
+            return manager.update_spam_ban_auto(account_id, body.enabled)
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
 

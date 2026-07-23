@@ -579,14 +579,18 @@ class AccountManager:
             await self._send_delivery_callback("error", account_id, chat_id, f"FloodWait: {e.seconds} сек")
             raise ValueError(f"FloodWait: подождите {e.seconds} секунд") from e
         except PeerFloodError as e:
-            banned_until = datetime.now(timezone.utc) + timedelta(hours=24)
             cfg = self.configs.get(account_id)
-            if cfg:
+            if cfg and cfg.spam_ban_auto:
+                banned_until = datetime.now(timezone.utc) + timedelta(hours=24)
                 cfg.banned_until = banned_until
                 self._save_configs()
-            logger.warning(f"[{account_id}] PeerFloodError — спам-бан. Аккаунт заблокирован до {banned_until.isoformat()}")
-            await self._send_delivery_callback("error", account_id, chat_id, f"SpamBan: аккаунт ограничён на 24ч")
-            raise ValueError(f"Аккаунт заблокирован спам-баном на 24 часа (до {banned_until.isoformat()})") from e
+                logger.warning(f"[{account_id}] PeerFloodError — спам-бан выставлен до {banned_until.isoformat()}")
+                await self._send_delivery_callback("error", account_id, chat_id, f"SpamBan: аккаунт ограничён на 24ч")
+                raise ValueError(f"Аккаунт заблокирован спам-баном на 24 часа (до {banned_until.isoformat()})") from e
+            else:
+                logger.warning(f"[{account_id}] PeerFloodError — авто-бан отключён, бан не выставлен")
+                await self._send_delivery_callback("error", account_id, chat_id, "SpamBan: PeerFloodError (авто-бан отключён)")
+                raise ValueError("PeerFloodError: Telegram ограничил отправку (авто-бан отключён)") from e
         except Exception as e:
             await self._send_delivery_callback("error", account_id, chat_id, str(e))
             raise ValueError(f"Ошибка отправки: {e}") from e
@@ -622,6 +626,14 @@ class AccountManager:
     # ------------------------------------------------------------------ #
     #  Настройки превью ссылок                                             #
     # ------------------------------------------------------------------ #
+
+    def update_spam_ban_auto(self, account_id: str, enabled: bool) -> dict:
+        cfg = self.configs.get(account_id)
+        if cfg is None:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        cfg.spam_ban_auto = enabled
+        self._save_configs()
+        return {"account_id": account_id, "spam_ban_auto": cfg.spam_ban_auto}
 
     def update_link_preview(self, account_id: str, link_preview_disabled: Optional[bool] = None) -> dict:
         cfg = self.configs.get(account_id)
@@ -896,5 +908,6 @@ class AccountManager:
                 "typing_min_seconds": cfg.typing_min_seconds if cfg else 7.0,
                 "typing_max_seconds": cfg.typing_max_seconds if cfg else 10.0,
                 "link_preview_disabled": cfg.link_preview_disabled if cfg else False,
+                "spam_ban_auto": cfg.spam_ban_auto if cfg else True,
             })
         return result
