@@ -478,9 +478,10 @@
           <button class="new-chat-btn" id="newChatBtn" title="Открыть чат по @никнейму">+</button>
         </div>
         <div class="filter-row">
+          <button class="filter-btn active" id="filterChats" onclick="setFilter('chats')">Чаты</button>
           <button class="filter-btn" id="filterSent" onclick="setFilter('sent')">С приветствием</button>
-          <button class="filter-btn active" id="filterAll" onclick="setFilter('all')">Все диалоги</button>
-          <button class="filter-btn" id="filterSheet" onclick="setFilter('sheet')">Из таблицы</button>
+          <button class="filter-btn" id="filterAll" onclick="setFilter('all')">Все</button>
+          <button class="filter-btn" id="filterSheet" onclick="setFilter('sheet')">Таблица</button>
         </div>
       </div>
       <div class="dialogs-list" id="dialogsList">
@@ -543,7 +544,7 @@ let currentChat    = null;
 let allDialogs     = [];
 let lastMsgId      = 0;
 let pollTimer      = null;
-let filterMode     = 'all';    // 'sent' | 'all' | 'sheet'
+let filterMode     = 'chats';  // 'chats' | 'sent' | 'all' | 'sheet'
 let allAccountsMode = false;
 let authorizedAccounts = [];
 let sheetContacts  = [];       // [{user_id, username, name, account, status}]
@@ -591,9 +592,9 @@ async function selectAccount(id) {
   currentChat     = null;
   lastMsgId       = 0;
 
-  // В режиме одного аккаунта сбрасываем sheet-фильтр на sent
+  // В режиме одного аккаунта сбрасываем sheet-фильтр на chats
   if (!allAccountsMode && filterMode === 'sheet') {
-    filterMode = 'sent';
+    filterMode = 'chats';
   }
   if (!allAccountsMode) {
     document.getElementById('filterAll').disabled = false;
@@ -619,13 +620,14 @@ document.getElementById('refreshDialogsBtn').addEventListener('click', () => {
 
 // ── Filter ─────────────────────────────────────────────────────────────────
 function _syncFilterBtns() {
+  document.getElementById('filterChats').classList.toggle('active', filterMode === 'chats');
   document.getElementById('filterSent').classList.toggle('active', filterMode === 'sent');
   document.getElementById('filterAll').classList.toggle('active', filterMode === 'all');
   document.getElementById('filterSheet').classList.toggle('active', filterMode === 'sheet');
 }
 
 window.setFilter = function(mode) {
-  if (mode === 'all' && allAccountsMode) return; // "Все диалоги" недоступен в режиме всех аккаунтов
+  if (mode === 'all' && allAccountsMode) return;
   filterMode = mode;
   _syncFilterBtns();
   loadDialogs();
@@ -649,7 +651,6 @@ async function loadDialogs() {
     }
 
     if (allAccountsMode) {
-      // sent_only=true только в режиме "С приветствием"
       const sentOnly = filterMode === 'sent';
       const results = await Promise.all(
         authorizedAccounts.map(a =>
@@ -673,7 +674,7 @@ async function loadDialogs() {
       });
       console.log('[loadDialogs] total allDialogs:', allDialogs.length);
     } else {
-      const sentOnly = filterMode !== 'all';
+      const sentOnly = filterMode === 'sent';
       allDialogs = await api('GET',
         `/api/accounts/${currentAccount}/dialogs?limit=200&sent_only=${sentOnly}`);
       console.log('[loadDialogs] single account dialogs:', allDialogs.length);
@@ -693,8 +694,10 @@ function renderDialogs() {
     (d.username || '').toLowerCase().includes(q)
   ) : allDialogs;
 
-  // In sheet mode only show dialogs whose user_id is in the sheet
-  if (filterMode === 'sheet') {
+  // Фильтр по типу диалога
+  if (filterMode === 'chats') {
+    list = list.filter(d => d.type === 'user');
+  } else if (filterMode === 'sheet') {
     list = list.filter(d => sheetById.has(d.id));
   }
 
