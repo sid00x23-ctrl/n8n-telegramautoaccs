@@ -385,6 +385,60 @@
     }
     .msg-read-status.read   { color: var(--primary); }
     .msg-read-status.unread { color: var(--text-3); }
+
+    /* ── Mobile back button (hidden on desktop) ── */
+    .chat-back-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-2);
+      cursor: pointer;
+      padding: 4px 6px 4px 0;
+      flex-shrink: 0;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 680px) {
+      .header { padding: 0 12px; height: 52px; }
+      .header-left span[style] { font-size: 14px; }
+      .back-btn { font-size: 13px; }
+      .account-sel { font-size: 12px; padding: 5px 7px; max-width: 130px; }
+      .refresh-btn { padding: 5px 7px; }
+
+      .chat-wrap { position: relative; }
+
+      /* Sidebar занимает весь экран */
+      .sidebar {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        z-index: 2;
+        transition: transform .25s ease;
+      }
+      .sidebar.mobile-hidden {
+        transform: translateX(-100%);
+        pointer-events: none;
+      }
+
+      /* Панель сообщений тоже на весь экран */
+      .messages-panel {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        z-index: 1;
+        background: var(--bg, #08080f);
+      }
+
+      .chat-back-btn { display: flex; align-items: center; }
+
+      .msg-wrapper.out { max-width: 88%; }
+      .msg-wrapper.in  { max-width: 88%; }
+      .msg { font-size: 13px; }
+      .messages-body { padding: 10px 12px; }
+      .msg-input-wrap { padding: 8px 12px; }
+
+      .filter-btn { font-size: 10px; padding: 4px 6px; }
+    }
   </style>
 </head>
 <body>
@@ -443,6 +497,11 @@
 
       <div class="chat-active" id="chatActive">
         <div class="chat-header">
+          <button class="chat-back-btn" id="chatBackBtn" title="Назад к диалогам">
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+              <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
           <div class="d-avatar" id="chatAvatar" style="width:36px;height:36px;font-size:14px">?</div>
           <div class="chat-header-info">
             <div class="ch-name" id="chatName">—</div>
@@ -697,6 +756,21 @@ function renderDialogs() {
 
 document.getElementById('searchInput').addEventListener('input', renderDialogs);
 
+// ── Mobile navigation ───────────────────────────────────────────────────────
+function isMobile() { return window.innerWidth <= 680; }
+
+function showChat() {
+  if (!isMobile()) return;
+  document.querySelector('.sidebar').classList.add('mobile-hidden');
+}
+
+function backToList() {
+  document.querySelector('.sidebar').classList.remove('mobile-hidden');
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+document.getElementById('chatBackBtn').addEventListener('click', backToList);
+
 document.getElementById('newChatBtn').addEventListener('click', () => {
   const val = document.getElementById('searchInput').value.trim().replace(/^@/, '');
   if (!val) { toast('Введите @никнейм в строку поиска', 'err'); return; }
@@ -746,6 +820,7 @@ window.openDialog = async function(idx) {
   document.getElementById('msgsBody').innerHTML =
     '<div style="text-align:center;color:var(--text-3);font-size:13px;padding:40px">Загрузка...</div>';
 
+  showChat();
   await loadMessages(true);
   pollTimer = setInterval(() => loadMessages(false), 5000);
 };
@@ -1016,6 +1091,7 @@ window.openChatByUsername = async function(username) {
     document.getElementById('msgsBody').innerHTML =
       '<div style="text-align:center;color:var(--text-3);font-size:13px;padding:40px">Загрузка...</div>';
 
+    showChat();
     await loadMessages(true);
     pollTimer = setInterval(() => loadMessages(false), 5000);
   } catch (e) {
