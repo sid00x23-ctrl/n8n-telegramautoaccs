@@ -46,6 +46,7 @@ class AccountConfig(BaseModel):
     typing_max_seconds: float = 10.0    # максимальное время набора (секунд)
     link_preview_disabled: bool = False # отключить превью ссылок в исходящих сообщениях
     spam_ban_auto: bool = True          # автоматически выставлять спам-бан при PeerFloodError
+    proxy: Optional[str] = None         # прокси URL: socks5://user:pass@host:port или http://...
 
 
 class TypingSettingsRequest(BaseModel):
@@ -64,3 +65,7 @@ class SpamBanRequest(BaseModel):
 
 class SpamBanAutoRequest(BaseModel):
     enabled: bool  # True — автоматически ставить бан при PeerFloodError, False — не ставить
+
+
+class ProxyRequest(BaseModel):
+    proxy: Optional[str] = None  # socks5://user:pass@host:port | http://... | None — без прокси

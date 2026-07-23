@@ -2,9 +2,11 @@ import asyncio
 import json
 import logging
 import random
+import socks
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 import httpx
 from telethon import TelegramClient, events
@@ -30,6 +32,29 @@ logger = logging.getLogger(__name__)
 
 CONFIGS_FILE    = Path("accounts_config.json")
 SENT_CHATS_FILE = Path("sent_chats.json")
+
+
+def _parse_proxy(proxy_url: Optional[str]):
+    """Парсит прокси URL в tuple для Telethon: (type, host, port, rdns, user, pass)."""
+    if not proxy_url:
+        return None
+    p = urlparse(proxy_url)
+    scheme = p.scheme.lower()
+    if scheme == "socks5":
+        proxy_type = socks.SOCKS5
+    elif scheme == "socks4":
+        proxy_type = socks.SOCKS4
+    elif scheme in ("http", "https"):
+        proxy_type = socks.HTTP
+    else:
+        raise ValueError(f"Неизвестный тип прокси: {scheme}. Используйте socks5://, socks4:// или http://")
+    host = p.hostname
+    port = p.port
+    username = p.username or None
+    password = p.password or None
+    if not host or not port:
+        raise ValueError(f"Неверный формат прокси URL: {proxy_url}")
+    return (proxy_type, host, port, True, username, password)
 
 
 class AccountManager:
@@ -125,7 +150,9 @@ class AccountManager:
 
     async def _connect_client(self, account_id: str, phone: str) -> TelegramClient:
         session_path = str(settings.SESSIONS_DIR / account_id)
-        client = TelegramClient(session_path, settings.TELEGRAM_API_ID, settings.TELEGRAM_API_HASH)
+        cfg = self.configs.get(account_id)
+        proxy = _parse_proxy(cfg.proxy if cfg else None)
+        client = TelegramClient(session_path, settings.TELEGRAM_API_ID, settings.TELEGRAM_API_HASH, proxy=proxy)
         self.clients[account_id] = client
 
         try:
@@ -627,6 +654,26 @@ class AccountManager:
     #  Настройки превью ссылок                                             #
     # ------------------------------------------------------------------ #
 
+    async def set_proxy(self, account_id: str, proxy_url: Optional[str]) -> dict:
+        cfg = self.configs.get(account_id)
+        if cfg is None:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        # Проверяем корректность URL до сохранения
+        parsed = _parse_proxy(proxy_url)
+        cfg.proxy = proxy_url
+        self._save_configs()
+        # Переподключаем клиент с новым прокси
+        client = self.clients.get(account_id)
+        if client:
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+        await self._connect_client(account_id, cfg.phone)
+        proxy_host = urlparse(proxy_url).hostname if proxy_url else None
+        logger.info(f"[{account_id}] Прокси обновлён: {proxy_host or 'без прокси'}")
+        return {"account_id": account_id, "proxy": proxy_url, "proxy_host": proxy_host}
+
     def update_spam_ban_auto(self, account_id: str, enabled: bool) -> dict:
         cfg = self.configs.get(account_id)
         if cfg is None:
@@ -909,5 +956,6 @@ class AccountManager:
                 "typing_max_seconds": cfg.typing_max_seconds if cfg else 10.0,
                 "link_preview_disabled": cfg.link_preview_disabled if cfg else False,
                 "spam_ban_auto": cfg.spam_ban_auto if cfg else True,
+                "proxy": cfg.proxy if cfg else None,
             })
         return result

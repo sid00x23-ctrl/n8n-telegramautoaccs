@@ -9,7 +9,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 from manager import AccountManager
-from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest
+from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest, ProxyRequest
 
 
 def create_app(manager: AccountManager) -> FastAPI:
@@ -188,6 +188,18 @@ def create_app(manager: AccountManager) -> FastAPI:
             return manager.set_spam_ban(account_id, body.banned_until)
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
+
+    @app.patch("/accounts/{account_id}/proxy", tags=["system"])
+    async def set_proxy(account_id: str, body: ProxyRequest):
+        """
+        Установить прокси для аккаунта. Аккаунт переподключится через новый прокси.
+
+        Body: {"proxy": "socks5://user:pass@host:port"} или {"proxy": null} — без прокси.
+        """
+        try:
+            return await manager.set_proxy(account_id, body.proxy)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
     @app.patch("/accounts/{account_id}/spam_ban_auto", tags=["system"])
     async def update_spam_ban_auto(account_id: str, body: SpamBanAutoRequest):
