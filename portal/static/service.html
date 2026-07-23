@@ -224,11 +224,11 @@
           </svg>
           Превью
         </button>
-        <button class="btn btn-ghost btn-sm" id="bulkSpamBanAutoBtn">
+        <button class="btn btn-ghost btn-sm" id="bulkSpamBanAutoBtn" title="Включить/выключить авто-бан для всех аккаунтов">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
-          Авто-бан
+          <span id="bulkSpamBanAutoLabel">Авто-бан: вкл</span>
         </button>
       </div>
     </div>
@@ -521,6 +521,7 @@
       try {
         allAccounts = await api('GET', '/api/accounts');
         renderTable(allAccounts);
+        _syncBulkSpamBanBtn();
       } catch (e) {
         area.innerHTML = `<div class="empty-state"><p style="color:var(--error)">${e.message}</p></div>`;
         $('accountsCount').textContent = 'Ошибка загрузки';
@@ -1005,22 +1006,41 @@
       if (e.target === $('linkPreviewModal')) hideEl('linkPreviewModal');
     });
 
-    // ── Spam-ban auto modal ───────────────────────────────────────────────────
+    // ── Spam-ban auto ─────────────────────────────────────────────────────────
     let spamBanAutoAccId = null;
 
     function openSpamBanAutoModal(accId, enabled) {
       spamBanAutoAccId = accId;
-      $('spamBanAutoModalTitle').textContent = accId
-        ? `Авто-бан — ${accId}`
-        : 'Авто-бан — все аккаунты';
+      $('spamBanAutoModalTitle').textContent = `Авто-бан — ${accId}`;
       $('spamBanAutoEnabled').checked = enabled;
       hideEl('spamBanAutoErr');
       showEl('spamBanAutoModal');
     }
 
-    $('bulkSpamBanAutoBtn').addEventListener('click', () => {
-      const first = allAccounts[0];
-      openSpamBanAutoModal(null, first ? first.spam_ban_auto !== false : true);
+    function _syncBulkSpamBanBtn() {
+      const allEnabled = allAccounts.every(a => a.spam_ban_auto !== false);
+      $('bulkSpamBanAutoLabel').textContent = allEnabled ? 'Авто-бан: вкл' : 'Авто-бан: выкл';
+      $('bulkSpamBanAutoBtn').style.color = allEnabled ? '' : '#ef4444';
+    }
+
+    $('bulkSpamBanAutoBtn').addEventListener('click', async () => {
+      const allEnabled = allAccounts.every(a => a.spam_ban_auto !== false);
+      const newEnabled = !allEnabled; // flip
+      $('bulkSpamBanAutoBtn').disabled = true;
+      try {
+        await Promise.all(
+          allAccounts.map(acc =>
+            api('PATCH', `/api/accounts/${encodeURIComponent(acc.account_id)}/spam_ban_auto`, { enabled: newEnabled })
+          )
+        );
+        allAccounts.forEach(a => a.spam_ban_auto = newEnabled);
+        _syncBulkSpamBanBtn();
+        toast(`Авто-бан ${newEnabled ? 'включён' : 'выключен'} для всех аккаунтов (${allAccounts.length})`);
+      } catch (e) {
+        toast(e.message, 'err');
+      } finally {
+        $('bulkSpamBanAutoBtn').disabled = false;
+      }
     });
 
     $('spamBanAutoCancelBtn').addEventListener('click', () => { hideEl('spamBanAutoModal'); });
@@ -1029,16 +1049,8 @@
       setSpinner('spamBanAutoSpinner', 'spamBanAutoSaveBtn', true);
       const body = { enabled: $('spamBanAutoEnabled').checked };
       try {
-        if (spamBanAutoAccId) {
-          await api('PATCH', `/api/accounts/${encodeURIComponent(spamBanAutoAccId)}/spam_ban_auto`, body);
-        } else {
-          await Promise.all(
-            allAccounts.map(acc =>
-              api('PATCH', `/api/accounts/${encodeURIComponent(acc.account_id)}/spam_ban_auto`, body)
-            )
-          );
-        }
-        toast(spamBanAutoAccId ? 'Настройки сохранены' : `Применено к ${allAccounts.length} аккаунтам`, 'ok');
+        await api('PATCH', `/api/accounts/${encodeURIComponent(spamBanAutoAccId)}/spam_ban_auto`, body);
+        toast('Настройки сохранены');
         hideEl('spamBanAutoModal');
         loadAccounts();
       } catch (e) {
