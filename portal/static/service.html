@@ -459,12 +459,12 @@
       <div class="modal-body step" style="gap:14px">
         <p style="font-size:13px;color:var(--text-2);margin:0">
           Форматы:<br>
-          <code>1.2.3.4:8080</code> — HTTP без пароля<br>
-          <code>user:pass@1.2.3.4:8080</code> — HTTP с паролем<br>
+          <code>https://t.me/proxy?server=...&port=...&secret=...</code> — MTProto (из Telegram-каналов)<br>
           <code>socks5://user:pass@1.2.3.4:1080</code> — SOCKS5<br>
+          <code>1.2.3.4:8080</code> или <code>user:pass@1.2.3.4:8080</code> — HTTP<br>
           Оставьте пустым — без прокси.
         </p>
-        <input class="input-field" type="text" id="proxyInput" placeholder="185.162.231.73:80" autocomplete="off" spellcheck="false" />
+        <input class="input-field" type="text" id="proxyInput" placeholder="https://t.me/proxy?server=...&port=443&secret=..." autocomplete="off" spellcheck="false" />
         <div class="text-err text-sm hidden" id="proxyErr"></div>
       </div>
       <div class="modal-footer">
@@ -627,11 +627,12 @@
                       </button>
                       <button class="btn btn-ghost btn-sm" data-proxy="${esc(acc.account_id)}"
                         data-proxy-val="${esc(acc.proxy || '')}"
-                        title="Прокси${acc.proxy ? ': ' + acc.proxy.replace(/:[^:@]*@/, ':***@') : ' (не задан)'}">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${acc.proxy ? '#22c55e' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        title="Прокси${acc.proxy_type === 'mtproto' ? ' MTProto' : acc.proxy_type === 'socks' ? ' SOCKS5' : ' (не задан)'}${acc.proxy_error ? ' ⚠ ' + acc.proxy_error : ''}">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${acc.proxy_error ? '#ef4444' : acc.proxy ? '#22c55e' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                           <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
                           <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                         </svg>
+                        ${acc.proxy_type === 'mtproto' ? '<span style="font-size:10px;margin-left:2px">MT</span>' : ''}
                       </button>
                       <button class="btn btn-danger btn-sm" data-del="${esc(acc.account_id)}">Выйти</button>
                     </div>

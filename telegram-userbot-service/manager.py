@@ -5,11 +5,15 @@ import random
 import socks
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
-from urllib.parse import urlparse
+from typing import Optional, Tuple
+from urllib.parse import urlparse, parse_qs
 
 import httpx
 from telethon import TelegramClient, events
+from telethon.network.connection import (
+    ConnectionTcpMTProxyRandomizedIntermediate,
+    ConnectionTcpFull,
+)
 from telethon.errors import (
     SessionPasswordNeededError,
     PhoneCodeInvalidError,
@@ -34,20 +38,49 @@ CONFIGS_FILE    = Path("accounts_config.json")
 SENT_CHATS_FILE = Path("sent_chats.json")
 
 
-def _parse_proxy(proxy_url: Optional[str]):
-    """Парсит прокси URL в tuple для Telethon: (type, host, port, rdns, user, pass).
-    Принимает форматы:
-      ip:port                          → HTTP без авторизации
-      user:pass@ip:port                → HTTP с авторизацией
-      socks5://user:pass@ip:port       → SOCKS5
-      http://ip:port                   → HTTP
+def _parse_proxy(proxy_url: Optional[str]) -> Tuple[Optional[tuple], Optional[type]]:
+    """Парсит прокси URL. Возвращает (proxy_tuple, connection_class).
+
+    Форматы:
+      https://t.me/proxy?server=H&port=P&secret=S  → MTProto
+      tg://proxy?server=H&port=P&secret=S           → MTProto
+      ip:port                                        → HTTP без авторизации
+      user:pass@ip:port                              → HTTP с авторизацией
+      socks5://user:pass@ip:port                     → SOCKS5
+      http://ip:port                                 → HTTP
     """
     if not proxy_url:
-        return None
+        return None, None
+
+    # MTProto: t.me/proxy или tg://proxy
+    proxy_url_stripped = proxy_url.strip()
+    if "t.me/proxy" in proxy_url_stripped or proxy_url_stripped.startswith("tg://proxy"):
+        if "t.me/proxy" in proxy_url_stripped and "://" not in proxy_url_stripped:
+            proxy_url_stripped = "https://" + proxy_url_stripped
+        p = urlparse(proxy_url_stripped)
+        qs = parse_qs(p.query)
+        server = (qs.get("server") or qs.get("host") or [""])[0]
+        port_str = (qs.get("port") or [""])[0]
+        secret_hex = (qs.get("secret") or [""])[0]
+        if not server or not port_str or not secret_hex:
+            raise ValueError("MTProto прокси: нужны параметры server, port, secret")
+        port = int(port_str)
+        # Убираем префикс dd/ee (тип шифрования)
+        hex_clean = secret_hex.lstrip("0")
+        if secret_hex.lower().startswith("dd") or secret_hex.lower().startswith("ee"):
+            hex_clean = secret_hex[2:]
+        else:
+            hex_clean = secret_hex
+        try:
+            secret_bytes = bytes.fromhex(hex_clean)
+        except ValueError:
+            raise ValueError(f"Неверный secret в MTProto прокси: {secret_hex}")
+        return (server, port, secret_bytes), ConnectionTcpMTProxyRandomizedIntermediate
+
     # Голый ip:port или user:pass@ip:port — добавляем схему http://
-    if "://" not in proxy_url:
-        proxy_url = "http://" + proxy_url
-    p = urlparse(proxy_url)
+    if "://" not in proxy_url_stripped:
+        proxy_url_stripped = "http://" + proxy_url_stripped
+    p = urlparse(proxy_url_stripped)
     scheme = p.scheme.lower()
     if scheme == "socks5":
         proxy_type = socks.SOCKS5
@@ -63,7 +96,7 @@ def _parse_proxy(proxy_url: Optional[str]):
     password = p.password or None
     if not host or not port:
         raise ValueError(f"Неверный формат прокси URL: {proxy_url}")
-    return (proxy_type, host, port, True, username, password)
+    return (proxy_type, host, port, True, username, password), None
 
 
 class AccountManager:
@@ -163,8 +196,13 @@ class AccountManager:
     async def _connect_client(self, account_id: str, phone: str) -> TelegramClient:
         session_path = str(settings.SESSIONS_DIR / account_id)
         cfg = self.configs.get(account_id)
-        proxy = _parse_proxy(cfg.proxy if cfg else None)
-        client = TelegramClient(session_path, settings.TELEGRAM_API_ID, settings.TELEGRAM_API_HASH, proxy=proxy)
+        proxy, connection_class = _parse_proxy(cfg.proxy if cfg else None)
+        kwargs = {}
+        if proxy:
+            kwargs["proxy"] = proxy
+        if connection_class:
+            kwargs["connection"] = connection_class
+        client = TelegramClient(session_path, settings.TELEGRAM_API_ID, settings.TELEGRAM_API_HASH, **kwargs)
         self.clients[account_id] = client
 
         try:
@@ -671,7 +709,7 @@ class AccountManager:
         if cfg is None:
             raise ValueError(f"Аккаунт '{account_id}' не найден")
         # Проверяем корректность URL до сохранения
-        _parse_proxy(proxy_url)
+        _parse_proxy(proxy_url)  # raises ValueError если формат неверный
         cfg.proxy = proxy_url
         self._save_configs()
         # Переподключаем клиент с новым прокси
@@ -995,6 +1033,7 @@ class AccountManager:
                 "link_preview_disabled": cfg.link_preview_disabled if cfg else False,
                 "spam_ban_auto": cfg.spam_ban_auto if cfg else True,
                 "proxy": cfg.proxy if cfg else None,
+                "proxy_type": "mtproto" if cfg and cfg.proxy and ("t.me/proxy" in cfg.proxy or cfg.proxy.startswith("tg://proxy")) else ("socks" if cfg and cfg.proxy else None),
                 "proxy_error": self._proxy_errors.get(account_id),
             })
         return result
