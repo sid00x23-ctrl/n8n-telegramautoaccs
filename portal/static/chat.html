@@ -55,8 +55,13 @@
       flex-direction: column;
       gap: 8px;
     }
+    .search-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
     .search-input {
-      width: 100%;
+      flex: 1;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -68,6 +73,20 @@
       transition: border-color .2s;
     }
     .search-input:focus { border-color: var(--primary); }
+    .new-chat-btn {
+      flex-shrink: 0;
+      width: 32px; height: 32px;
+      background: rgba(0,212,255,0.1);
+      border: 1px solid var(--primary);
+      border-radius: 8px;
+      color: var(--primary);
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .new-chat-btn:hover { background: rgba(0,212,255,0.22); }
 
     .filter-row {
       display: flex;
@@ -400,7 +419,10 @@
     <!-- Sidebar -->
     <div class="sidebar">
       <div class="sidebar-search">
-        <input id="searchInput" class="search-input" type="text" placeholder="Поиск по имени или @никнейму...">
+        <div class="search-row">
+          <input id="searchInput" class="search-input" type="text" placeholder="Поиск или @никнейм...">
+          <button class="new-chat-btn" id="newChatBtn" title="Открыть чат по @никнейму">+</button>
+        </div>
         <div class="filter-row">
           <button class="filter-btn active" id="filterSent" onclick="setFilter('sent')">С приветствием</button>
           <button class="filter-btn" id="filterAll" onclick="setFilter('all')">Все диалоги</button>
@@ -674,6 +696,19 @@ function renderDialogs() {
 }
 
 document.getElementById('searchInput').addEventListener('input', renderDialogs);
+
+document.getElementById('newChatBtn').addEventListener('click', () => {
+  const val = document.getElementById('searchInput').value.trim().replace(/^@/, '');
+  if (!val) { toast('Введите @никнейм в строку поиска', 'err'); return; }
+  openChatByUsername(val);
+});
+
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const val = e.target.value.trim().replace(/^@/, '');
+    if (val) openChatByUsername(val);
+  }
+});
 
 // ── Open dialog ────────────────────────────────────────────────────────────
 window.openDialog = async function(idx) {
