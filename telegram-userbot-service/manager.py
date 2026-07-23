@@ -81,6 +81,9 @@ class AccountManager:
         # account_id → set of chat_ids успешно отправленных сообщений
         self._sent_chats: dict[str, set[int]] = {}
 
+        # account_id → сообщение об ошибке прокси (None = OK)
+        self._proxy_errors: dict[str, str] = {}
+
         # Глобальная очередь приветствий (rate-limited отправки)
         self._greeting_queue: asyncio.Queue = asyncio.Queue()
         self._greeting_worker_task: Optional[asyncio.Task] = None
@@ -668,7 +671,7 @@ class AccountManager:
         if cfg is None:
             raise ValueError(f"Аккаунт '{account_id}' не найден")
         # Проверяем корректность URL до сохранения
-        parsed = _parse_proxy(proxy_url)
+        _parse_proxy(proxy_url)
         cfg.proxy = proxy_url
         self._save_configs()
         # Переподключаем клиент с новым прокси
@@ -679,9 +682,35 @@ class AccountManager:
             except Exception:
                 pass
         await self._connect_client(account_id, cfg.phone)
+
+        # Проверяем реальное соединение (таймаут 10 сек)
+        proxy_error = None
+        client = self.clients.get(account_id)
+        if not client or not client.is_connected():
+            proxy_error = "Не удалось подключиться через прокси"
+        else:
+            try:
+                await asyncio.wait_for(client.is_user_authorized(), timeout=10)
+                self._proxy_errors.pop(account_id, None)
+            except asyncio.TimeoutError:
+                proxy_error = "Таймаут подключения через прокси"
+            except Exception as e:
+                proxy_error = f"Ошибка прокси: {e}"
+
+        if proxy_error:
+            self._proxy_errors[account_id] = proxy_error
+            logger.warning(f"[{account_id}] {proxy_error}")
+        else:
+            self._proxy_errors.pop(account_id, None)
+
         proxy_host = urlparse(proxy_url).hostname if proxy_url else None
         logger.info(f"[{account_id}] Прокси обновлён: {proxy_host or 'без прокси'}")
-        return {"account_id": account_id, "proxy": proxy_url, "proxy_host": proxy_host}
+        return {
+            "account_id": account_id,
+            "proxy": proxy_url,
+            "proxy_host": proxy_host,
+            "proxy_error": proxy_error,
+        }
 
     def update_spam_ban_auto(self, account_id: str, enabled: bool) -> dict:
         cfg = self.configs.get(account_id)
@@ -966,5 +995,6 @@ class AccountManager:
                 "link_preview_disabled": cfg.link_preview_disabled if cfg else False,
                 "spam_ban_auto": cfg.spam_ban_auto if cfg else True,
                 "proxy": cfg.proxy if cfg else None,
+                "proxy_error": self._proxy_errors.get(account_id),
             })
         return result
