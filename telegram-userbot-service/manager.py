@@ -776,22 +776,18 @@ class AccountManager:
             raise ValueError(f"Ошибка получения диалогов: {e}") from e
         result = []
         for d in dialogs:
+            entity = d.entity
+            # только личные чаты (User), группы и каналы пропускаем
+            if not isinstance(entity, User):
+                continue
             if sent_only and d.id not in sent_ids:
                 continue
-            entity = d.entity
             last_msg = d.message
             status = getattr(entity, "status", None)
-            if d.is_user:
-                dialog_type = "user"
-            elif d.is_channel:
-                dialog_type = "channel"
-            else:
-                dialog_type = "group"
             result.append({
                 "id": d.id,
                 "name": d.name or str(d.id),
                 "username": getattr(entity, "username", None),
-                "type": dialog_type,
                 "unread_count": d.unread_count,
                 "last_online": self._parse_status(status) if status is not None else None,
                 "last_message": {
