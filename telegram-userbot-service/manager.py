@@ -735,7 +735,12 @@ class AccountManager:
         else:
             self._proxy_errors.pop(account_id, None)
 
-        proxy_host = urlparse(proxy_url).hostname if proxy_url else None
+        if proxy_url:
+            _p = urlparse(proxy_url if "://" in proxy_url else "http://" + proxy_url)
+            _qs = parse_qs(_p.query)
+            proxy_host = (_qs.get("server") or _qs.get("host") or [None])[0] or _p.hostname
+        else:
+            proxy_host = None
         logger.info(f"[{account_id}] Прокси обновлён: {proxy_host or 'без прокси'}")
         return {
             "account_id": account_id,
