@@ -823,7 +823,7 @@ window.openDialog = async function(idx) {
 
   showChat();
   await loadMessages(true);
-  markRead();
+  await markRead();
   pollTimer = setInterval(() => { loadMessages(false); markRead(); }, 5000);
 };
 
@@ -831,6 +831,12 @@ async function markRead() {
   if (!currentAccount || !currentChat) return;
   try {
     await api('POST', `/api/accounts/${currentAccount}/dialogs/${currentChat.id}/read`);
+    // Обнуляем счётчик локально и перерисовываем список
+    const d = allDialogs.find(d => d.id === currentChat.id && d._account_id === currentChat._account_id);
+    if (d && d.unread_count > 0) {
+      d.unread_count = 0;
+      renderDialogs();
+    }
   } catch (_) {}
 }
 
