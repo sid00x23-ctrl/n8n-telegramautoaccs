@@ -466,9 +466,6 @@
           <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
         </svg>
       </button>
-      <button class="refresh-btn" id="spamBanAutoBtn" title="Авто-бан при PeerFloodError" onclick="toggleSpamBanAuto()" style="display:none;font-size:11px;padding:4px 8px;width:auto">
-        🛡 авто-бан
-      </button>
     </div>
   </header>
 
@@ -593,7 +590,6 @@ async function selectAccount(id) {
   currentAccount  = allAccountsMode ? null : id;
   currentChat     = null;
   lastMsgId       = 0;
-  _updateSpamBanBtn(id);
 
   // В режиме одного аккаунта сбрасываем sheet-фильтр на sent
   if (!allAccountsMode && filterMode === 'sheet') {
@@ -617,36 +613,6 @@ document.getElementById('accountSel').addEventListener('change', e => {
   if (e.target.value) selectAccount(e.target.value);
 });
 
-// ── Spam-ban auto toggle ────────────────────────────────────────────────────
-function _updateSpamBanBtn(account) {
-  const btn = document.getElementById('spamBanAutoBtn');
-  if (!account || account === '__all__') {
-    btn.style.display = 'none';
-    return;
-  }
-  const acc = authorizedAccounts.find(a => a.account_id === account);
-  if (!acc) { btn.style.display = 'none'; return; }
-  const enabled = acc.spam_ban_auto !== false; // default true
-  btn.style.display = '';
-  btn.title = enabled ? 'Авто-бан включён — нажмите чтобы отключить' : 'Авто-бан отключён — нажмите чтобы включить';
-  btn.textContent = enabled ? '🛡 авто-бан' : '🚫 авто-бан';
-  btn.style.opacity = enabled ? '1' : '0.5';
-}
-
-window.toggleSpamBanAuto = async function() {
-  if (!currentAccount) return;
-  const acc = authorizedAccounts.find(a => a.account_id === currentAccount);
-  if (!acc) return;
-  const newEnabled = acc.spam_ban_auto === false; // flip
-  try {
-    await api('PATCH', `/api/accounts/${encodeURIComponent(currentAccount)}/spam_ban_auto`, { enabled: newEnabled });
-    acc.spam_ban_auto = newEnabled;
-    _updateSpamBanBtn(currentAccount);
-    toast(newEnabled ? 'Авто-бан включён' : 'Авто-бан отключён');
-  } catch(e) {
-    toast('Ошибка: ' + e.message, 'err');
-  }
-};
 
 document.getElementById('refreshDialogsBtn').addEventListener('click', () => {
   loadDialogs();

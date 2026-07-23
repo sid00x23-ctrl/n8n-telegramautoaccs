@@ -224,6 +224,12 @@
           </svg>
           Превью
         </button>
+        <button class="btn btn-ghost btn-sm" id="bulkSpamBanAutoBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          Авто-бан
+        </button>
       </div>
     </div>
 
@@ -419,6 +425,33 @@
     </div>
   </div>
 
+  <!-- ═══════════════ MODAL: Авто-бан ═══════════════ -->
+  <div class="modal-overlay hidden" id="spamBanAutoModal">
+    <div class="modal">
+      <div class="modal-title" id="spamBanAutoModalTitle">Авто-бан</div>
+      <div class="modal-body step" style="gap:18px">
+        <div class="toggle-row">
+          <span class="toggle-label">Выставлять спам-бан при PeerFloodError</span>
+          <label class="toggle">
+            <input type="checkbox" id="spamBanAutoEnabled" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);margin:0">
+          Когда выключено — ошибка PeerFloodError от Telegram не будет ставить 24-часовой бан на аккаунт.
+        </p>
+        <div class="text-err text-sm hidden" id="spamBanAutoErr"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="spamBanAutoCancelBtn">Отмена</button>
+        <button class="btn btn-primary" id="spamBanAutoSaveBtn">
+          <span>Сохранить</span>
+          <span class="spinner hidden" id="spamBanAutoSpinner"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════════════ MODAL: Подтверждение удаления ═══════════════ -->
   <div class="modal-overlay hidden" id="deleteModal">
     <div class="modal">
@@ -551,6 +584,13 @@
                           <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                         </svg>
                       </button>
+                      <button class="btn btn-ghost btn-sm" data-spamban="${esc(acc.account_id)}"
+                        data-spamban-auto="${acc.spam_ban_auto !== false}"
+                        title="Авто-бан${acc.spam_ban_auto === false ? ' (откл.)' : ''}">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${acc.spam_ban_auto === false ? '#ef4444' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                      </button>
                       <button class="btn btn-danger btn-sm" data-del="${esc(acc.account_id)}">Выйти</button>
                     </div>
                   </td>
@@ -577,6 +617,13 @@
         btn.addEventListener('click', () => openLinkPreviewModal(
           btn.dataset.preview,
           btn.dataset.previewDisabled === 'true',
+        ));
+      });
+
+      area.querySelectorAll('[data-spamban]').forEach(btn => {
+        btn.addEventListener('click', () => openSpamBanAutoModal(
+          btn.dataset.spamban,
+          btn.dataset.spambanAuto === 'true',
         ));
       });
     }
@@ -958,6 +1005,50 @@
       if (e.target === $('linkPreviewModal')) hideEl('linkPreviewModal');
     });
 
+    // ── Spam-ban auto modal ───────────────────────────────────────────────────
+    let spamBanAutoAccId = null;
+
+    function openSpamBanAutoModal(accId, enabled) {
+      spamBanAutoAccId = accId;
+      $('spamBanAutoModalTitle').textContent = accId
+        ? `Авто-бан — ${accId}`
+        : 'Авто-бан — все аккаунты';
+      $('spamBanAutoEnabled').checked = enabled;
+      hideEl('spamBanAutoErr');
+      showEl('spamBanAutoModal');
+    }
+
+    $('bulkSpamBanAutoBtn').addEventListener('click', () => {
+      const first = allAccounts[0];
+      openSpamBanAutoModal(null, first ? first.spam_ban_auto !== false : true);
+    });
+
+    $('spamBanAutoCancelBtn').addEventListener('click', () => { hideEl('spamBanAutoModal'); });
+
+    $('spamBanAutoSaveBtn').addEventListener('click', async () => {
+      setSpinner('spamBanAutoSpinner', 'spamBanAutoSaveBtn', true);
+      const body = { enabled: $('spamBanAutoEnabled').checked };
+      try {
+        if (spamBanAutoAccId) {
+          await api('PATCH', `/api/accounts/${encodeURIComponent(spamBanAutoAccId)}/spam_ban_auto`, body);
+        } else {
+          await Promise.all(
+            allAccounts.map(acc =>
+              api('PATCH', `/api/accounts/${encodeURIComponent(acc.account_id)}/spam_ban_auto`, body)
+            )
+          );
+        }
+        toast(spamBanAutoAccId ? 'Настройки сохранены' : `Применено к ${allAccounts.length} аккаунтам`, 'ok');
+        hideEl('spamBanAutoModal');
+        loadAccounts();
+      } catch (e) {
+        $('spamBanAutoErr').textContent = e.message;
+        showEl('spamBanAutoErr');
+      } finally {
+        setSpinner('spamBanAutoSpinner', 'spamBanAutoSaveBtn', false);
+      }
+    });
+
     // ── Delete modal ──────────────────────────────────────────────────────────
     let deleteAccId = null;
 
@@ -985,13 +1076,14 @@
     });
 
     // Close modals on overlay click
-    ['phoneModal','qrModal','deleteModal','typingModal','linkPreviewModal'].forEach(id => {
+    ['phoneModal','qrModal','deleteModal','typingModal','linkPreviewModal','spamBanAutoModal'].forEach(id => {
       $(id).addEventListener('click', (e) => {
         if (e.target === $(id)) {
           if (id === 'phoneModal') closePhoneModal();
           else if (id === 'qrModal') closeQrModal();
           else if (id === 'typingModal') hideEl('typingModal');
           else if (id === 'linkPreviewModal') hideEl('linkPreviewModal');
+          else if (id === 'spamBanAutoModal') hideEl('spamBanAutoModal');
           else { hideEl('deleteModal'); deleteAccId = null; }
         }
       });
