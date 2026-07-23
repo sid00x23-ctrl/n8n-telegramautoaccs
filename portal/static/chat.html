@@ -479,6 +479,7 @@
         </div>
         <div class="filter-row">
           <button class="filter-btn active" id="filterSent" onclick="setFilter('sent')">С приветствием</button>
+          <button class="filter-btn" id="filterAll" onclick="setFilter('all')">Все диалоги</button>
           <button class="filter-btn" id="filterSheet" onclick="setFilter('sheet')">Из таблицы</button>
         </div>
       </div>
@@ -595,6 +596,7 @@ async function selectAccount(id) {
     filterMode = 'sent';
   }
   if (!allAccountsMode) {
+    document.getElementById('filterAll').disabled = false;
     document.getElementById('filterSheet').disabled = false;
   }
   _syncFilterBtns();
@@ -618,10 +620,12 @@ document.getElementById('refreshDialogsBtn').addEventListener('click', () => {
 // ── Filter ─────────────────────────────────────────────────────────────────
 function _syncFilterBtns() {
   document.getElementById('filterSent').classList.toggle('active', filterMode === 'sent');
+  document.getElementById('filterAll').classList.toggle('active', filterMode === 'all');
   document.getElementById('filterSheet').classList.toggle('active', filterMode === 'sheet');
 }
 
 window.setFilter = function(mode) {
+  if (mode === 'all' && allAccountsMode) return;
   filterMode = mode;
   _syncFilterBtns();
   loadDialogs();
