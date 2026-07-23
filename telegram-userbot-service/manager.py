@@ -770,15 +770,21 @@ class AccountManager:
         if not client.is_connected():
             raise ValueError(f"Аккаунт '{account_id}' не подключён к Telegram")
         sent_ids = self._sent_chats.get(account_id, set())
+        # Для "Все диалоги" (sent_only=False) берём больше чтобы после фильтра
+        # по User осталось достаточно — у пользователей может быть много групп
+        fetch_limit = limit if sent_only else max(limit * 4, 400)
         try:
-            dialogs = await client.get_dialogs(limit=limit)
+            dialogs = await client.get_dialogs(limit=fetch_limit)
         except Exception as e:
             raise ValueError(f"Ошибка получения диалогов: {e}") from e
         result = []
         for d in dialogs:
+            entity = d.entity
+            # В режиме "Все диалоги" показываем только личные чаты с пользователями
+            if not sent_only and not isinstance(entity, User):
+                continue
             if sent_only and d.id not in sent_ids:
                 continue
-            entity = d.entity
             last_msg = d.message
             status = getattr(entity, "status", None)
             result.append({
