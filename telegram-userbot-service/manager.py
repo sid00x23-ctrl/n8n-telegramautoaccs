@@ -770,8 +770,11 @@ class AccountManager:
         if not client.is_connected():
             raise ValueError(f"Аккаунт '{account_id}' не подключён к Telegram")
         sent_ids = self._sent_chats.get(account_id, set())
+        # Берём у Telegram больше диалогов чем нужно — чтобы после фильтрации
+        # по User осталось достаточно (группы и каналы не считаются)
+        fetch_limit = max(limit * 5, 500)
         try:
-            dialogs = await client.get_dialogs(limit=limit)
+            dialogs = await client.get_dialogs(limit=fetch_limit)
         except Exception as e:
             raise ValueError(f"Ошибка получения диалогов: {e}") from e
         result = []
@@ -796,6 +799,8 @@ class AccountManager:
                     "out": last_msg.out,
                 } if last_msg else None,
             })
+            if len(result) >= limit:
+                break
         return result
 
     async def resolve_username(self, account_id: str, username: str) -> dict:
