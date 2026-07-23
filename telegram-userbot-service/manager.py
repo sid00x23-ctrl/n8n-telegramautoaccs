@@ -59,20 +59,15 @@ def _parse_proxy(proxy_url: Optional[str]) -> Tuple[Optional[tuple], Optional[ty
             proxy_url_stripped = "https://" + proxy_url_stripped
         p = urlparse(proxy_url_stripped)
         qs = parse_qs(p.query)
-        server = (qs.get("server") or qs.get("host") or [""])[0]
-        port_str = (qs.get("port") or [""])[0]
-        secret_hex = (qs.get("secret") or [""])[0]
+        server = str((qs.get("server") or qs.get("host") or [""])[0]).strip()
+        port_str = str((qs.get("port") or [""])[0]).strip()
+        secret_hex = str((qs.get("secret") or [""])[0]).strip()
         if not server or not port_str or not secret_hex:
             raise ValueError("MTProto прокси: нужны параметры server, port, secret")
         port = int(port_str)
-        # Убираем префикс dd/ee (тип шифрования)
-        hex_clean = secret_hex.lstrip("0")
-        if secret_hex.lower().startswith("dd") or secret_hex.lower().startswith("ee"):
-            hex_clean = secret_hex[2:]
-        else:
-            hex_clean = secret_hex
+        # Передаём полный secret как bytes (включая префикс dd/ee)
         try:
-            secret_bytes = bytes.fromhex(hex_clean)
+            secret_bytes = bytes.fromhex(secret_hex)
         except ValueError:
             raise ValueError(f"Неверный secret в MTProto прокси: {secret_hex}")
         return (server, port, secret_bytes), ConnectionTcpMTProxyRandomizedIntermediate
