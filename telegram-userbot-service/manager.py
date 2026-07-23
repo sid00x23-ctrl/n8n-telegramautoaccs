@@ -65,12 +65,11 @@ def _parse_proxy(proxy_url: Optional[str]) -> Tuple[Optional[tuple], Optional[ty
         if not server or not port_str or not secret_hex:
             raise ValueError("MTProto прокси: нужны параметры server, port, secret")
         port = int(port_str)
-        # Передаём полный secret как bytes (включая префикс dd/ee)
-        try:
-            secret_bytes = bytes.fromhex(secret_hex)
-        except ValueError:
+        # Telethon сам парсит hex-строку и убирает ee/dd префикс в normalize_secret()
+        # Передаём secret как строку, не конвертируем в bytes
+        if not all(c in "0123456789abcdefABCDEF" for c in secret_hex):
             raise ValueError(f"Неверный secret в MTProto прокси: {secret_hex}")
-        return (server, port, secret_bytes), ConnectionTcpMTProxyRandomizedIntermediate
+        return (server, port, secret_hex), ConnectionTcpMTProxyRandomizedIntermediate
 
     # Голый ip:port или user:pass@ip:port — добавляем схему http://
     if "://" not in proxy_url_stripped:
