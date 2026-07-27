@@ -9,7 +9,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 from manager import AccountManager
-from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest, ProxyRequest
+from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest, WarmupInitiatorRequest, ProxyRequest
 
 
 def create_app(manager: AccountManager) -> FastAPI:
@@ -200,6 +200,18 @@ def create_app(manager: AccountManager) -> FastAPI:
             return await manager.set_proxy(account_id, body.proxy)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+    @app.patch("/accounts/{account_id}/warmup_initiator", tags=["system"])
+    async def update_warmup_initiator(account_id: str, body: WarmupInitiatorRequest):
+        """
+        Включить/выключить флаг инициатора прогрева для аккаунта.
+
+        Body: {"enabled": true/false}
+        """
+        try:
+            return manager.update_warmup_initiator(account_id, body.enabled)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
 
     @app.patch("/accounts/{account_id}/spam_ban_auto", tags=["system"])
     async def update_spam_ban_auto(account_id: str, body: SpamBanAutoRequest):

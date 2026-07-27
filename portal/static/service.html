@@ -224,6 +224,12 @@
           </svg>
           Превью
         </button>
+        <button class="btn btn-ghost btn-sm" id="bulkWarmupBtn" title="Включить/выключить прогрев-инициатор для всех аккаунтов">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+          </svg>
+          <span id="bulkWarmupLabel">Прогрев: выкл</span>
+        </button>
         <button class="btn btn-ghost btn-sm" id="bulkSpamBanAutoBtn" title="Включить/выключить авто-бан для всех аккаунтов">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
@@ -426,6 +432,32 @@
   </div>
 
   <!-- ═══════════════ MODAL: Авто-бан ═══════════════ -->
+  <div class="modal-overlay hidden" id="warmupInitiatorModal">
+    <div class="modal">
+      <div class="modal-title" id="warmupInitiatorModalTitle">Прогрев</div>
+      <div class="modal-body step" style="gap:18px">
+        <div class="toggle-row">
+          <span class="toggle-label">Инициатор прогрева</span>
+          <label class="toggle">
+            <input type="checkbox" id="warmupInitiatorEnabled" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);margin:0">
+          Аккаунт будет первым начинать диалоги с другими аккаунтами для прогрева.
+        </p>
+        <div class="text-err text-sm hidden" id="warmupInitiatorErr"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="warmupInitiatorCancelBtn">Отмена</button>
+        <button class="btn btn-primary" id="warmupInitiatorSaveBtn">
+          <span>Сохранить</span>
+          <span class="spinner hidden" id="warmupInitiatorSpinner"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay hidden" id="spamBanAutoModal">
     <div class="modal">
       <div class="modal-title" id="spamBanAutoModalTitle">Авто-бан</div>
@@ -555,6 +587,7 @@
         allAccounts = await api('GET', '/api/accounts');
         renderTable(allAccounts);
         _syncBulkSpamBanBtn();
+        _syncBulkWarmupBtn();
       } catch (e) {
         area.innerHTML = `<div class="empty-state"><p style="color:var(--error)">${e.message}</p></div>`;
         $('accountsCount').textContent = 'Ошибка загрузки';
@@ -618,6 +651,13 @@
                           <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                         </svg>
                       </button>
+                      <button class="btn btn-ghost btn-sm" data-warmup="${esc(acc.account_id)}"
+                        data-warmup-enabled="${acc.warmup_initiator === true}"
+                        title="Прогрев: инициатор${acc.warmup_initiator ? ' (вкл.)' : ' (выкл.)'}">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${acc.warmup_initiator ? '#22c55e' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+                        </svg>
+                      </button>
                       <button class="btn btn-ghost btn-sm" data-spamban="${esc(acc.account_id)}"
                         data-spamban-auto="${acc.spam_ban_auto !== false}"
                         title="Авто-бан${acc.spam_ban_auto === false ? ' (откл.)' : ''}">
@@ -660,6 +700,13 @@
         btn.addEventListener('click', () => openLinkPreviewModal(
           btn.dataset.preview,
           btn.dataset.previewDisabled === 'true',
+        ));
+      });
+
+      area.querySelectorAll('[data-warmup]').forEach(btn => {
+        btn.addEventListener('click', () => openWarmupInitiatorModal(
+          btn.dataset.warmup,
+          btn.dataset.warmupEnabled === 'true',
         ));
       });
 
@@ -1110,6 +1157,61 @@
       }
     });
 
+    // ── Warmup initiator ──────────────────────────────────────────────────────
+    let warmupInitiatorAccId = null;
+
+    function openWarmupInitiatorModal(accId, enabled) {
+      warmupInitiatorAccId = accId;
+      $('warmupInitiatorModalTitle').textContent = `Прогрев — ${accId}`;
+      $('warmupInitiatorEnabled').checked = enabled;
+      hideEl('warmupInitiatorErr');
+      showEl('warmupInitiatorModal');
+    }
+
+    function _syncBulkWarmupBtn() {
+      const anyEnabled = allAccounts.some(a => a.warmup_initiator === true);
+      $('bulkWarmupLabel').textContent = anyEnabled ? 'Прогрев: есть' : 'Прогрев: выкл';
+      $('bulkWarmupBtn').style.color = anyEnabled ? '#22c55e' : '';
+    }
+
+    $('bulkWarmupBtn').addEventListener('click', async () => {
+      const anyEnabled = allAccounts.some(a => a.warmup_initiator === true);
+      const newEnabled = !anyEnabled;
+      $('bulkWarmupBtn').disabled = true;
+      try {
+        await Promise.all(
+          allAccounts.map(acc =>
+            api('PATCH', `/api/accounts/${encodeURIComponent(acc.account_id)}/warmup_initiator`, { enabled: newEnabled })
+          )
+        );
+        allAccounts.forEach(a => a.warmup_initiator = newEnabled);
+        _syncBulkWarmupBtn();
+        toast(`Прогрев-инициатор ${newEnabled ? 'включён' : 'выключен'} для всех аккаунтов (${allAccounts.length})`);
+      } catch (e) {
+        toast(e.message, 'err');
+      } finally {
+        $('bulkWarmupBtn').disabled = false;
+      }
+    });
+
+    $('warmupInitiatorCancelBtn').addEventListener('click', () => { hideEl('warmupInitiatorModal'); });
+
+    $('warmupInitiatorSaveBtn').addEventListener('click', async () => {
+      setSpinner('warmupInitiatorSpinner', 'warmupInitiatorSaveBtn', true);
+      const body = { enabled: $('warmupInitiatorEnabled').checked };
+      try {
+        await api('PATCH', `/api/accounts/${encodeURIComponent(warmupInitiatorAccId)}/warmup_initiator`, body);
+        toast('Настройки сохранены');
+        hideEl('warmupInitiatorModal');
+        loadAccounts();
+      } catch (e) {
+        $('warmupInitiatorErr').textContent = e.message;
+        showEl('warmupInitiatorErr');
+      } finally {
+        setSpinner('warmupInitiatorSpinner', 'warmupInitiatorSaveBtn', false);
+      }
+    });
+
     // ── Proxy modal ───────────────────────────────────────────────────────────
     let proxyAccId = null;
 
@@ -1174,13 +1276,14 @@
     });
 
     // Close modals on overlay click
-    ['phoneModal','qrModal','deleteModal','typingModal','linkPreviewModal','spamBanAutoModal','proxyModal'].forEach(id => {
+    ['phoneModal','qrModal','deleteModal','typingModal','linkPreviewModal','warmupInitiatorModal','spamBanAutoModal','proxyModal'].forEach(id => {
       $(id).addEventListener('click', (e) => {
         if (e.target === $(id)) {
           if (id === 'phoneModal') closePhoneModal();
           else if (id === 'qrModal') closeQrModal();
           else if (id === 'typingModal') hideEl('typingModal');
           else if (id === 'linkPreviewModal') hideEl('linkPreviewModal');
+          else if (id === 'warmupInitiatorModal') hideEl('warmupInitiatorModal');
           else if (id === 'spamBanAutoModal') hideEl('spamBanAutoModal');
           else if (id === 'proxyModal') hideEl('proxyModal');
           else { hideEl('deleteModal'); deleteAccId = null; }

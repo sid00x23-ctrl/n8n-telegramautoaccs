@@ -46,6 +46,7 @@ class AccountConfig(BaseModel):
     typing_max_seconds: float = 10.0    # максимальное время набора (секунд)
     link_preview_disabled: bool = False # отключить превью ссылок в исходящих сообщениях
     spam_ban_auto: bool = True          # автоматически выставлять спам-бан при PeerFloodError
+    warmup_initiator: bool = False      # аккаунт инициирует прогревочные диалоги
     proxy: Optional[str] = None         # прокси URL: socks5://user:pass@host:port или http://...
 
 
@@ -65,6 +66,10 @@ class SpamBanRequest(BaseModel):
 
 class SpamBanAutoRequest(BaseModel):
     enabled: bool  # True — автоматически ставить бан при PeerFloodError, False — не ставить
+
+
+class WarmupInitiatorRequest(BaseModel):
+    enabled: bool  # True — аккаунт инициирует прогревочные диалоги
 
 
 class ProxyRequest(BaseModel):
