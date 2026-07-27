@@ -321,7 +321,7 @@ async def get_proxies(request: Request):
 @app.post("/api/proxies/assign")
 async def assign_proxies(request: Request):
     require_auth(request)
-    return await _proxy("POST", "/proxies/assign", timeout=180.0)
+    return await _proxy("POST", "/proxies/assign", timeout=30.0)
 
 @app.post("/api/proxies/import")
 async def import_proxies(request: Request):

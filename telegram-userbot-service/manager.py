@@ -900,7 +900,7 @@ class AccountManager:
         """
         Назначает прокси из пула всем аккаунтам.
         Фаза 1 (sync): выбирает совместимые прокси для каждого аккаунта.
-        Фаза 2 (parallel): переподключает все аккаунты одновременно.
+        Фаза 2 (background): переподключает аккаунты в фоне — HTTP-ответ возвращается сразу.
         """
         if not self.proxy_pool:
             raise ValueError("Proxy pool не инициализирован")
@@ -934,23 +934,25 @@ class AccountManager:
             self.proxy_pool.assign_proxy_to_account(account_id, proxy_id=chosen["id"])
             task_list.append((account_id, chosen["url"]))
 
-        # Фаза 2: параллельное переподключение (макс. 5 одновременно)
+        # Фаза 2: запускаем переподключение в фоне и возвращаем ответ сразу
         sem = asyncio.Semaphore(5)
 
-        async def _reconnect(account_id: str, proxy_url: str) -> dict:
+        async def _reconnect(account_id: str, proxy_url: str) -> None:
             async with sem:
                 try:
-                    return await self.set_proxy(account_id, proxy_url)
+                    await self.set_proxy(account_id, proxy_url)
                 except Exception as e:
-                    return {"account_id": account_id, "proxy_error": str(e)}
+                    logger.error(f"[assign_all_proxies] [{account_id}] Ошибка: {e}")
 
-        results = await asyncio.gather(*[_reconnect(aid, url) for aid, url in task_list])
+        async def _run_all() -> None:
+            await asyncio.gather(*[_reconnect(aid, url) for aid, url in task_list])
+            logger.info(f"[assign_all_proxies] Завершено: {len(task_list)} аккаунтов")
 
-        errors = sum(1 for r in results if r.get("proxy_error"))
+        asyncio.create_task(_run_all())
+
         return {
-            "assigned": len(results) - errors,
+            "started": len(task_list),
             "skipped": len(skipped),
-            "errors": errors,
         }
 
     def update_spam_ban_auto(self, account_id: str, enabled: bool) -> dict:

@@ -1510,7 +1510,7 @@
       $('assignProxiesBtn').disabled = true;
       try {
         const res = await api('POST', '/api/proxies/assign');
-        toast(`Назначено: ${res.assigned}, пропущено: ${res.skipped}, ошибок: ${res.errors}`);
+        toast(`Переподключение запущено: ${res.started} акк., пропущено: ${res.skipped}`);
         loadProxies();
         loadAccounts();
       } catch (e) {
