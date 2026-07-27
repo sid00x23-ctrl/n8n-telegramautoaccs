@@ -56,18 +56,10 @@ async def main():
     logging.getLogger("telethon").setLevel(logging.ERROR)
 
     manager = AccountManager()
-    await manager.start_all()
 
     if HEADLESS:
-        # Серверный режим: пропускаем CLI, сразу запускаем сервис
-        statuses = manager.get_status()
-        authorized = [s for s in statuses if s["authorized"]]
-        if not authorized:
-            console.print("[yellow]HEADLESS: нет авторизованных аккаунтов. "
-                          "Добавьте их через API /accounts/{id}/auth/start или /auth/qr[/yellow]")
-        else:
-            console.print(f"[green]HEADLESS: загружено аккаунтов: {len(authorized)}[/green]")
-
+        # Серверный режим: сначала поднимаем HTTP-сервер, потом подключаем аккаунты фоном.
+        # Так порт 8000 появляется сразу, даже если какие-то аккаунты долго коннектятся.
         logging.getLogger().setLevel(logging.INFO)
         logging.getLogger("telethon").setLevel(logging.WARNING)
 
@@ -75,6 +67,18 @@ async def main():
         config = uvicorn.Config(app, host=settings.SERVICE_HOST, port=settings.SERVICE_PORT,
                                 log_level="warning", access_log=False)
         server = uvicorn.Server(config)
+
+        async def _start_accounts():
+            await manager.start_all()
+            statuses = manager.get_status()
+            authorized = [s for s in statuses if s["authorized"]]
+            if not authorized:
+                console.print("[yellow]HEADLESS: нет авторизованных аккаунтов.[/yellow]")
+            else:
+                console.print(f"[green]HEADLESS: загружено аккаунтов: {len(authorized)}[/green]")
+
+        asyncio.create_task(_start_accounts())
+
         try:
             await server.serve()
         except (KeyboardInterrupt, asyncio.CancelledError):
@@ -84,7 +88,8 @@ async def main():
             await manager.stop_all()
         return
 
-    # Интерактивный режим: сначала CLI для первоначальной настройки
+    # Интерактивный режим: подключаем аккаунты синхронно, потом CLI
+    await manager.start_all()
     cli = CLI(manager)
     should_start = await cli.run()
 
