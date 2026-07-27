@@ -192,15 +192,17 @@ class AccountManager:
         if self.proxy_pool:
             for account_id, cfg in self.configs.items():
                 proxy = self.proxy_pool.get_account_proxy(account_id)
+                if not proxy:
+                    proxy = self.proxy_pool.assign_proxy_to_account(account_id)
+                    if proxy:
+                        logger.info(f"[{account_id}] Автоназначен прокси {proxy['id'][:8]}...")
                 if proxy:
-                    cfg.proxy = proxy["url"]
-                else:
-                    new_proxy = self.proxy_pool.assign_proxy_to_account(account_id)
-                    if new_proxy:
-                        cfg.proxy = new_proxy["url"]
-                        logger.info(f"[{account_id}] Автоназначен прокси {new_proxy['id'][:8]}...")
-                    else:
-                        logger.warning(f"[{account_id}] Нет свободных прокси — работает без прокси")
+                    # Проверяем совместимость с Telethon перед назначением
+                    try:
+                        _parse_proxy(proxy["url"])
+                        cfg.proxy = proxy["url"]
+                    except ValueError as e:
+                        logger.warning(f"[{account_id}] Прокси {proxy['id'][:8]}... несовместим: {e} — оставляем без изменений")
             self._save_configs()
         for account_id, cfg in self.configs.items():
             try:
@@ -233,7 +235,12 @@ class AccountManager:
     async def _connect_client(self, account_id: str, phone: str) -> TelegramClient:
         session_path = str(settings.SESSIONS_DIR / account_id)
         cfg = self.configs.get(account_id)
-        proxy, connection_class = _parse_proxy(cfg.proxy if cfg else None)
+        try:
+            proxy, connection_class = _parse_proxy(cfg.proxy if cfg else None)
+        except ValueError as e:
+            logger.error(f"[{account_id}] Неверный формат прокси: {e} — подключаемся без прокси")
+            self._proxy_errors[account_id] = str(e)
+            proxy, connection_class = None, None
         kwargs = {}
         if proxy:
             kwargs["proxy"] = proxy
