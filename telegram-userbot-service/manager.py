@@ -79,9 +79,6 @@ def _parse_proxy(proxy_url: Optional[str]) -> Tuple[Optional[tuple], Optional[ty
         is_fake_tls = False
 
         if not all(c in "0123456789abcdefABCDEF" for c in secret_hex):
-            # Определяем тип по text-префиксу до декодирования
-            if secret_hex[:2].lower() == "ee":
-                is_fake_tls = True
             decoded_bytes = None
             try:
                 padding = (4 - len(secret_hex) % 4) % 4
@@ -91,6 +88,7 @@ def _parse_proxy(proxy_url: Optional[str]) -> Tuple[Optional[tuple], Optional[ty
             if decoded_bytes is None:
                 raise ValueError(f"Неверный secret в MTProto прокси: {secret_hex}")
             if len(decoded_bytes) >= 17 and decoded_bytes[0] in (0xEE, 0xDD):
+                # Тип определяем по декодированному первому байту (не по строке)
                 if decoded_bytes[0] == 0xEE:
                     is_fake_tls = True
                 prefix = "ee" if decoded_bytes[0] == 0xEE else "dd"
