@@ -337,10 +337,26 @@ class ProxyPool:
         except Exception as e:
             raise ValueError(f"Не удалось загрузить страницу: {e}")
 
-        # Ищем MTProto прокси ссылки (& разрешён в URL после unescape)
-        pattern = r'(?:tg://proxy\?[^\s"\'<>\)\\]+|https?://t\.me/proxy\?[^\s"\'<>\)\\]+)'
-        found_raw = re.findall(pattern, raw_html, re.IGNORECASE)
-        found_urls = list(dict.fromkeys(found_raw))  # дедупликация с сохранением порядка
+        # Пробуем вытащить все прокси из JS-переменной allMT (содержит все 50)
+        import json as _json
+        found_urls: list = []
+        m = re.search(r"var allMT=(\[.*?\]);", raw_html, re.DOTALL)
+        if m:
+            try:
+                all_mt = _json.loads(m.group(1))
+                for item in all_mt:
+                    link = item.get("link", "")
+                    if link and link not in found_urls:
+                        found_urls.append(link)
+                logger.info(f"[toproxylab] Найдено {len(found_urls)} прокси из allMT")
+            except Exception as e:
+                logger.warning(f"[toproxylab] Не удалось разобрать allMT: {e}")
+
+        # Fallback: regex по HTML если allMT не найден
+        if not found_urls:
+            pattern = r'(?:tg://proxy\?[^\s"\'<>\)\\]+|https?://t\.me/proxy\?[^\s"\'<>\)\\]+)'
+            found_raw = re.findall(pattern, raw_html, re.IGNORECASE)
+            found_urls = list(dict.fromkeys(found_raw))
 
         added: list = []
         skipped: list = []
