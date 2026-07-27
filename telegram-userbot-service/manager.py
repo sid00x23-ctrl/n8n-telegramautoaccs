@@ -14,6 +14,7 @@ from telethon.network.connection import (
     ConnectionTcpMTProxyRandomizedIntermediate,
     ConnectionTcpFull,
 )
+from fake_tls_mtproxy import ConnectionTcpMTProxyFakeTLS
 from telethon.errors import (
     SessionPasswordNeededError,
     PhoneCodeInvalidError,
@@ -67,14 +68,20 @@ def _parse_proxy(proxy_url: Optional[str]) -> Tuple[Optional[tuple], Optional[ty
             raise ValueError("MTProto прокси: нужны параметры server, port, secret")
         port = int(port_str)
         # Телеграм принимает секрет в нескольких форматах:
-        # 1. Hex без префикса: <32 hex>
-        # 2. Hex с префиксом: [dd|ee]<32 hex>  — randomized/fake-TLS
-        # 3. Hex с доменом:   [dd|ee]<32 hex><domain hex>  — fake-TLS+SNI
-        # 4. Base64url целой строки (toproxylab и новый формат):
-        #    - 16 байт → plain key
-        #    - 17+ байт, byte[0]=0xEE/0xDD → тип + key[1:17] + опц. домен
+        # 1. Hex без префикса: <32 hex>           → Randomized Intermediate
+        # 2. Hex: dd<32 hex>                       → Randomized Intermediate
+        # 3. Hex: ee<32 hex>[<domain hex>]         → Fake-TLS
+        # 4. Base64url целой строки (toproxylab):
+        #    - starts with "ee" → Fake-TLS; starts with "dd" → Randomized
+        #    - decoded first byte 0xEE → Fake-TLS; 0xDD → Randomized
+        import base64 as _b64
+
+        is_fake_tls = False
+
         if not all(c in "0123456789abcdefABCDEF" for c in secret_hex):
-            import base64 as _b64
+            # Определяем тип по text-префиксу до декодирования
+            if secret_hex[:2].lower() == "ee":
+                is_fake_tls = True
             decoded_bytes = None
             try:
                 padding = (4 - len(secret_hex) % 4) % 4
@@ -84,17 +91,22 @@ def _parse_proxy(proxy_url: Optional[str]) -> Tuple[Optional[tuple], Optional[ty
             if decoded_bytes is None:
                 raise ValueError(f"Неверный secret в MTProto прокси: {secret_hex}")
             if len(decoded_bytes) >= 17 and decoded_bytes[0] in (0xEE, 0xDD):
-                # Тип-маркер есть; берём только первые 16 байт ключа (домен отбрасываем)
+                if decoded_bytes[0] == 0xEE:
+                    is_fake_tls = True
                 prefix = "ee" if decoded_bytes[0] == 0xEE else "dd"
                 secret_hex = prefix + decoded_bytes[1:17].hex()
             elif len(decoded_bytes) >= 16:
-                secret_hex = decoded_bytes[:16].hex()   # plain key
+                secret_hex = decoded_bytes[:16].hex()
             else:
                 raise ValueError(
                     f"MTProto secret слишком короткий после base64url: {len(decoded_bytes)} байт"
                 )
-        # Hex-формат с доменом в конце: [dd|ee]<32 hex><domain hex>
-        # Telethon ждёт ровно 34 символа с префиксом или 32 без → обрезаем лишнее
+        else:
+            # Чистый hex — тип определяется по text-префиксу
+            if secret_hex[:2].lower() == "ee":
+                is_fake_tls = True
+
+        # Hex-формат с доменом в конце: [dd|ee]<32 hex><domain hex> → обрезаем домен
         has_prefix = secret_hex[:2].lower() in ("dd", "ee")
         expected = 34 if has_prefix else 32
         if len(secret_hex) > expected:
@@ -104,7 +116,9 @@ def _parse_proxy(proxy_url: Optional[str]) -> Tuple[Optional[tuple], Optional[ty
                 f"MTProto secret неверной длины: {len(secret_hex) // 2} байт "
                 f"(нужно {'17' if has_prefix else '16'})"
             )
-        return (server, port, secret_hex), ConnectionTcpMTProxyRandomizedIntermediate
+
+        conn_class = ConnectionTcpMTProxyFakeTLS if is_fake_tls else ConnectionTcpMTProxyRandomizedIntermediate
+        return (server, port, secret_hex), conn_class
 
     # Голый ip:port или user:pass@ip:port — добавляем схему http://
     if "://" not in proxy_url_stripped:
