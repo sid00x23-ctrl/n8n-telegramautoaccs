@@ -339,6 +339,11 @@ async def update_proxy_settings(request: Request):
     body = await request.json()
     return await _proxy("PATCH", "/proxies/settings", json_body=body)
 
+@app.post("/api/proxies/check-all")
+async def check_all_proxies(request: Request):
+    require_auth(request)
+    return await _proxy("POST", "/proxies/check-all", timeout=120.0)
+
 @app.post("/api/proxies/{proxy_id}/check")
 async def check_proxy(proxy_id: str, request: Request):
     require_auth(request)
