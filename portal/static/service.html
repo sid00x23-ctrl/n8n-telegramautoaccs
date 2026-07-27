@@ -304,6 +304,16 @@
             </svg>
             Обновить
           </button>
+          <button class="btn btn-primary btn-sm" id="assignProxiesBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <span id="assignProxiesLabel">Назначить к аккаунтам</span>
+            <span class="spinner hidden" id="assignProxiesSpinner"></span>
+          </button>
           <button class="btn btn-ghost btn-sm" id="importProxiesBtn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -574,31 +584,6 @@
     </div>
   </div>
 
-  <!-- ═══════════════ MODAL: Прокси ═══════════════ -->
-  <div class="modal-overlay hidden" id="proxyModal">
-    <div class="modal">
-      <div class="modal-title" id="proxyModalTitle">Прокси</div>
-      <div class="modal-body step" style="gap:14px">
-        <p style="font-size:13px;color:var(--text-2);margin:0">
-          Форматы:<br>
-          <code>https://t.me/proxy?server=...&port=...&secret=...</code> — MTProto (из Telegram-каналов)<br>
-          <code>socks5://user:pass@1.2.3.4:1080</code> — SOCKS5<br>
-          <code>1.2.3.4:8080</code> или <code>user:pass@1.2.3.4:8080</code> — HTTP<br>
-          Оставьте пустым — без прокси.
-        </p>
-        <input class="input-field" type="text" id="proxyInput" placeholder="https://t.me/proxy?server=...&port=443&secret=..." autocomplete="off" spellcheck="false" />
-        <div class="text-err text-sm hidden" id="proxyErr"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" id="proxyCancelBtn">Отмена</button>
-        <button class="btn btn-primary" id="proxySaveBtn">
-          <span>Сохранить</span>
-          <span class="spinner hidden" id="proxySpinner"></span>
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- ═══════════════ MODAL: Добавить прокси ═══════════════ -->
   <div class="modal-overlay hidden" id="addProxyModal">
     <div class="modal">
@@ -808,15 +793,6 @@
                           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                         </svg>
                       </button>
-                      <button class="btn btn-ghost btn-sm" data-proxy="${esc(acc.account_id)}"
-                        data-proxy-val="${esc(acc.proxy || '')}"
-                        title="Прокси${acc.proxy_type === 'mtproto' ? ' MTProto' : acc.proxy_type === 'socks' ? ' SOCKS5' : ' (не задан)'}${acc.proxy_error ? ' ⚠ ' + acc.proxy_error : ''}">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${acc.proxy_error ? '#ef4444' : acc.proxy ? '#22c55e' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-                          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                        </svg>
-                        ${acc.proxy_type === 'mtproto' ? '<span style="font-size:10px;margin-left:2px">MT</span>' : ''}
-                      </button>
                       <button class="btn btn-danger btn-sm" data-del="${esc(acc.account_id)}">Выйти</button>
                     </div>
                   </td>
@@ -860,12 +836,6 @@
         ));
       });
 
-      area.querySelectorAll('[data-proxy]').forEach(btn => {
-        btn.addEventListener('click', () => openProxyModal(
-          btn.dataset.proxy,
-          btn.dataset.proxyVal,
-        ));
-      });
     }
 
     function esc(s) {
@@ -1355,43 +1325,6 @@
       }
     });
 
-    // ── Proxy modal ───────────────────────────────────────────────────────────
-    let proxyAccId = null;
-
-    function openProxyModal(accId, currentProxy) {
-      proxyAccId = accId;
-      $('proxyModalTitle').textContent = `Прокси — ${accId}`;
-      $('proxyInput').value = currentProxy || '';
-      hideEl('proxyErr');
-      showEl('proxyModal');
-      setTimeout(() => $('proxyInput').focus(), 50);
-    }
-
-    $('proxyCancelBtn').addEventListener('click', () => { hideEl('proxyModal'); });
-
-    $('proxySaveBtn').addEventListener('click', async () => {
-      const val = $('proxyInput').value.trim();
-      setSpinner('proxySpinner', 'proxySaveBtn', true);
-      hideEl('proxyErr');
-      try {
-        const res = await api('PATCH', `/api/accounts/${encodeURIComponent(proxyAccId)}/proxy`, { proxy: val || null });
-        if (res.proxy_error) {
-          $('proxyErr').textContent = res.proxy_error;
-          showEl('proxyErr');
-          toast('Прокси сохранён, но соединение не установлено', 'err');
-        } else {
-          toast(val ? 'Прокси установлен — соединение ОК' : 'Прокси снят');
-          hideEl('proxyModal');
-        }
-        loadAccounts();
-      } catch (e) {
-        $('proxyErr').textContent = e.message;
-        showEl('proxyErr');
-      } finally {
-        setSpinner('proxySpinner', 'proxySaveBtn', false);
-      }
-    });
-
     // ── Delete modal ──────────────────────────────────────────────────────────
     let deleteAccId = null;
 
@@ -1419,7 +1352,7 @@
     });
 
     // Close modals on overlay click
-    ['phoneModal','qrModal','deleteModal','typingModal','linkPreviewModal','warmupInitiatorModal','spamBanAutoModal','proxyModal'].forEach(id => {
+    ['phoneModal','qrModal','deleteModal','typingModal','linkPreviewModal','warmupInitiatorModal','spamBanAutoModal'].forEach(id => {
       $(id).addEventListener('click', (e) => {
         if (e.target === $(id)) {
           if (id === 'phoneModal') closePhoneModal();
@@ -1428,7 +1361,6 @@
           else if (id === 'linkPreviewModal') hideEl('linkPreviewModal');
           else if (id === 'warmupInitiatorModal') hideEl('warmupInitiatorModal');
           else if (id === 'spamBanAutoModal') hideEl('spamBanAutoModal');
-          else if (id === 'proxyModal') hideEl('proxyModal');
           else { hideEl('deleteModal'); deleteAccId = null; }
         }
       });
@@ -1570,6 +1502,25 @@
     }
 
     $('refreshProxiesBtn').addEventListener('click', loadProxies);
+
+    // ── Assign proxies to all accounts ────────────────────────────────────────
+    $('assignProxiesBtn').addEventListener('click', async () => {
+      $('assignProxiesSpinner').classList.remove('hidden');
+      $('assignProxiesLabel').textContent = 'Назначаю...';
+      $('assignProxiesBtn').disabled = true;
+      try {
+        const res = await api('POST', '/api/proxies/assign');
+        toast(`Назначено: ${res.assigned}, пропущено: ${res.skipped}, ошибок: ${res.errors}`);
+        loadProxies();
+        loadAccounts();
+      } catch (e) {
+        toast(e.message, 'err');
+      } finally {
+        $('assignProxiesSpinner').classList.add('hidden');
+        $('assignProxiesLabel').textContent = 'Назначить к аккаунтам';
+        $('assignProxiesBtn').disabled = false;
+      }
+    });
 
     // ── Import from toproxylab ────────────────────────────────────────────────
     $('importProxiesBtn').addEventListener('click', async () => {

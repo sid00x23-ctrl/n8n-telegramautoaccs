@@ -267,6 +267,15 @@ def create_app(manager: AccountManager, proxy_pool=None) -> FastAPI:
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
+    @app.post("/proxies/assign", tags=["proxies"])
+    async def assign_proxies():
+        if not proxy_pool:
+            raise HTTPException(status_code=503, detail="Proxy pool не инициализирован")
+        try:
+            return await manager.assign_all_proxies()
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
     @app.post("/proxies/import", tags=["proxies"])
     async def import_proxies():
         if not proxy_pool:

@@ -896,6 +896,61 @@ class AccountManager:
             "proxy_error": proxy_error,
         }
 
+    async def assign_all_proxies(self) -> dict:
+        """
+        Назначает прокси из пула всем аккаунтам.
+        Пропускает прокси, несовместимые с Telethon (неверный формат secret).
+        """
+        if not self.proxy_pool:
+            raise ValueError("Proxy pool не инициализирован")
+
+        assigned = []
+        skipped = []
+        errors = []
+
+        for account_id in list(self.configs.keys()):
+            cfg = self.configs.get(account_id)
+            if not cfg:
+                continue
+
+            # Ищем совместимый прокси из пула (пропускаем несовместимые)
+            tried: set = set()
+            chosen_proxy = None
+            while True:
+                p = self.proxy_pool.get_best_proxy(exclude_ids=tried)
+                if not p:
+                    break
+                try:
+                    _parse_proxy(p["url"])
+                    chosen_proxy = p
+                    break
+                except ValueError:
+                    tried.add(p["id"])
+
+            if not chosen_proxy:
+                skipped.append({"account_id": account_id, "reason": "Нет совместимых прокси"})
+                continue
+
+            # Фиксируем назначение в пуле
+            self.proxy_pool.assign_proxy_to_account(account_id, proxy_id=chosen_proxy["id"])
+
+            try:
+                result = await self.set_proxy(account_id, chosen_proxy["url"])
+                assigned.append({
+                    "account_id": account_id,
+                    "proxy_id": chosen_proxy["id"],
+                    "proxy_error": result.get("proxy_error"),
+                })
+            except Exception as e:
+                errors.append({"account_id": account_id, "error": str(e)})
+
+        return {
+            "assigned": len(assigned),
+            "skipped": len(skipped),
+            "errors": len(errors),
+            "details": assigned + skipped + errors,
+        }
+
     def update_spam_ban_auto(self, account_id: str, enabled: bool) -> dict:
         cfg = self.configs.get(account_id)
         if cfg is None:
