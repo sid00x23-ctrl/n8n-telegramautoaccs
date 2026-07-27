@@ -69,7 +69,20 @@ def _parse_proxy(proxy_url: Optional[str]) -> Tuple[Optional[tuple], Optional[ty
         # Telethon сам парсит hex-строку и убирает ee/dd префикс в normalize_secret()
         # Передаём secret как строку, не конвертируем в bytes
         if not all(c in "0123456789abcdefABCDEF" for c in secret_hex):
-            raise ValueError(f"Неверный secret в MTProto прокси: {secret_hex}")
+            # Пробуем base64url-формат: [ee|dd]<base64url(bytes)>
+            import base64 as _b64
+            try:
+                if len(secret_hex) >= 2 and secret_hex[:2].lower() in ("dd", "ee"):
+                    prefix = secret_hex[:2].lower()
+                    b64_part = secret_hex[2:]
+                else:
+                    prefix = ""
+                    b64_part = secret_hex
+                padding = (4 - len(b64_part) % 4) % 4
+                decoded_bytes = _b64.urlsafe_b64decode(b64_part + "=" * padding)
+                secret_hex = prefix + decoded_bytes.hex()
+            except Exception:
+                raise ValueError(f"Неверный secret в MTProto прокси: {secret_hex}")
         return (server, port, secret_hex), ConnectionTcpMTProxyRandomizedIntermediate
 
     # Голый ip:port или user:pass@ip:port — добавляем схему http://
@@ -190,7 +203,10 @@ class AccountManager:
                         logger.warning(f"[{account_id}] Нет свободных прокси — работает без прокси")
             self._save_configs()
         for account_id, cfg in self.configs.items():
-            await self._connect_client(account_id, cfg.phone)
+            try:
+                await self._connect_client(account_id, cfg.phone)
+            except Exception as e:
+                logger.error(f"[{account_id}] Ошибка подключения: {e}")
         if self.proxy_pool:
             await self.proxy_pool.start_monitor()
         self._greeting_worker_task = asyncio.create_task(self._greeting_worker())
