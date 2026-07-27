@@ -102,6 +102,19 @@ class ProxyPool:
     #  Проверка живости                                                     #
     # ------------------------------------------------------------------ #
 
+    @staticmethod
+    def _is_fake_tls_secret(raw_secret: str) -> bool:
+        """True если декодированный первый байт секрета == 0xEE (Fake-TLS)."""
+        try:
+            secret_bytes = bytes.fromhex(raw_secret)
+        except ValueError:
+            try:
+                import base64
+                secret_bytes = base64.urlsafe_b64decode(raw_secret + "==")
+            except Exception:
+                return False
+        return len(secret_bytes) > 0 and secret_bytes[0] == 0xEE
+
     async def _check_alive(self, url: str, timeout: float = 10.0) -> Optional[str]:
         """Проверяет прокси. Для MTProto ee-прокси — полный Fake-TLS хэндшейк с ключом."""
         hp = self._get_host_port(url)
@@ -109,10 +122,10 @@ class ProxyPool:
             return "Не удалось распарсить адрес прокси"
         host, port = hp
 
-        # Для MTProto прокси с ee-секретом — проверяем сам ключ через Fake-TLS хэндшейк
+        # Для MTProto прокси — проверяем decoded первый байт секрета (0xEE = Fake-TLS)
         if self._detect_type(url) == "mtproto":
             secret = self._get_mtproto_secret(url)
-            if secret and secret[:2].lower() == "ee":
+            if secret and self._is_fake_tls_secret(secret):
                 return await self._check_alive_fake_tls(host, port, secret, timeout)
 
         # Для остальных — TCP-коннект
