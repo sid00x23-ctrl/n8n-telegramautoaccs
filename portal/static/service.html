@@ -1408,9 +1408,16 @@
       }
     }
 
+    function proxyCompatHtml(p) {
+      if (p.compatible === true)  return `<span style="color:#22c55e;font-weight:600;font-size:12px">✓ Да</span>`;
+      if (p.compatible === false) return `<span style="color:#ef4444;font-size:12px" title="Секрет несовместим с Telethon (не 16 байт)">✗ Нет</span>`;
+      return `<span style="color:var(--text-2);font-size:12px">—</span>`;
+    }
+
     function renderProxiesTable(proxies) {
       const area = $('proxyTableArea');
-      $('proxiesCount').textContent = `Прокси: ${proxies.length}`;
+      const compat = proxies.filter(p => p.compatible).length;
+      $('proxiesCount').textContent = `Прокси: ${proxies.length} (совместимых: ${compat})`;
 
       if (!proxies.length) {
         area.innerHTML = `
@@ -1435,6 +1442,7 @@
                 <th>Тип</th>
                 <th>URL</th>
                 <th>Статус</th>
+                <th title="Совместим ли прокси с Telethon (правильный формат секрета)">Telethon</th>
                 <th>Аккаунты</th>
                 <th>Проверен</th>
                 <th></th>
@@ -1451,6 +1459,7 @@
                   <td>${proxyTypeLabel(p.type)}</td>
                   <td><span class="proxy-url" title="${esc(p.url)}">${esc(p.url)}</span></td>
                   <td>${proxyStatusHtml(p)}</td>
+                  <td>${proxyCompatHtml(p)}</td>
                   <td><span class="proxy-accounts-list">${accs.length > 0 ? esc(accs.join(', ')) : '<span style="color:var(--text-2)">—</span>'}</span></td>
                   <td><span style="font-size:12px;color:var(--text-2)">${lastCheck}</span></td>
                   <td style="text-align:right">

@@ -8,7 +8,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-from manager import AccountManager
+from manager import AccountManager, _parse_proxy
 from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest, WarmupInitiatorRequest, ProxyRequest, AddProxyRequest, ProxySettingsRequest
 
 
@@ -256,7 +256,14 @@ def create_app(manager: AccountManager, proxy_pool=None) -> FastAPI:
     async def list_proxies():
         if not proxy_pool:
             return []
-        return proxy_pool.list_proxies()
+        proxies = proxy_pool.list_proxies()
+        for p in proxies:
+            try:
+                _parse_proxy(p["url"])
+                p["compatible"] = True
+            except Exception:
+                p["compatible"] = False
+        return proxies
 
     @app.post("/proxies", tags=["proxies"])
     async def add_proxy(body: AddProxyRequest):
