@@ -85,16 +85,37 @@ class ProxyPool:
             return "socks4"
         return "http"
 
+    @staticmethod
+    def _get_mtproto_secret(url: str) -> Optional[str]:
+        """Извлекает секрет из MTProto URL."""
+        try:
+            url = url.strip()
+            if "://" not in url:
+                url = "https://" + url
+            qs = parse_qs(urlparse(url).query)
+            secret = (qs.get("secret") or [""])[0].strip()
+            return secret or None
+        except Exception:
+            return None
+
     # ------------------------------------------------------------------ #
     #  Проверка живости                                                     #
     # ------------------------------------------------------------------ #
 
-    async def _check_alive(self, url: str, timeout: float = 8.0) -> Optional[str]:
-        """TCP-коннект к хосту:порту прокси. None = живой, иначе строка ошибки."""
+    async def _check_alive(self, url: str, timeout: float = 10.0) -> Optional[str]:
+        """Проверяет прокси. Для MTProto ee-прокси — полный Fake-TLS хэндшейк с ключом."""
         hp = self._get_host_port(url)
         if not hp:
             return "Не удалось распарсить адрес прокси"
         host, port = hp
+
+        # Для MTProto прокси с ee-секретом — проверяем сам ключ через Fake-TLS хэндшейк
+        if self._detect_type(url) == "mtproto":
+            secret = self._get_mtproto_secret(url)
+            if secret and secret[:2].lower() == "ee":
+                return await self._check_alive_fake_tls(host, port, secret, timeout)
+
+        # Для остальных — TCP-коннект
         try:
             _reader, writer = await asyncio.wait_for(
                 asyncio.open_connection(host, port), timeout=timeout
@@ -111,6 +132,64 @@ class ProxyPool:
             return f"Недоступен ({host}:{port}): {e.strerror}"
         except Exception as e:
             return str(e)
+
+    async def _check_alive_fake_tls(
+        self, host: str, port: int, raw_secret: str, timeout: float = 10.0
+    ) -> Optional[str]:
+        """
+        Проверяет MTProto ee-прокси через полный Fake-TLS хэндшейк.
+        Повторяет логику ConnectionTcpMTProxyFakeTLS._connect(), поэтому
+        статус 'ok' означает что и хост доступен, и ключ принят сервером.
+        """
+        from fake_tls_mtproxy import _do_fake_tls_handshake, _extract_domain_from_secret
+
+        # Шаг 1: TCP-подключение
+        try:
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(host, port), timeout=timeout
+            )
+        except asyncio.TimeoutError:
+            return f"Таймаут ({host}:{port})"
+        except OSError as e:
+            return f"Недоступен ({host}:{port}): {e.strerror}"
+        except Exception as e:
+            return str(e)
+
+        try:
+            # Шаг 2: декодируем секрет — повторяем Telethon normalize_secret
+            try:
+                secret_bytes = bytes.fromhex(raw_secret)
+            except ValueError:
+                import base64
+                secret_bytes = base64.urlsafe_b64decode(raw_secret + "==")
+
+            # Повторяем логику TcpMTProxy._connect():
+            # если первый байт — 0xEE/0xDD и длина > 16 — убираем байт-префикс
+            if len(secret_bytes) > 16 and secret_bytes[0] in (0xDD, 0xEE):
+                hmac_key = secret_bytes[1:]
+            else:
+                hmac_key = secret_bytes
+
+            domain = _extract_domain_from_secret(raw_secret) or "www.google.com"
+
+            # Шаг 3: Fake-TLS хэндшейк (ClientHello → ServerHello → CCS → AppData)
+            await asyncio.wait_for(
+                _do_fake_tls_handshake(reader, writer, hmac_key, domain),
+                timeout=timeout,
+            )
+            return None  # хэндшейк прошёл — прокси живой и ключ принят
+        except ConnectionError as e:
+            return f"Ошибка Fake-TLS хэндшейка: {e}"
+        except asyncio.TimeoutError:
+            return f"Таймаут Fake-TLS хэндшейка ({host}:{port})"
+        except Exception as e:
+            return f"Ошибка проверки MTProto ключа: {e}"
+        finally:
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------ #
     #  CRUD                                                                 #
