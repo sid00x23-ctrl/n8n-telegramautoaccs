@@ -10,6 +10,7 @@ class SendMessageRequest(BaseModel):
     username: Optional[str] = None  # @username для первичного резолва entity
     rate_limited: bool = False      # если True — ждёт глобальную очередь (1 сообщение/мин)
     instant: bool = False           # если True — пропускает паузу и typing, шлёт сразу
+    warmup: bool = False            # если True — ждёт прогревочную очередь (30-70 сек между отправками)
 
 
 class AuthStartRequest(BaseModel):
