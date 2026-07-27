@@ -312,6 +312,8 @@ class ProxyPool:
         Парсит MTProto прокси с toproxylab.com/ru/proksi-dlya-tg.
         Ищет ссылки tg://proxy?... и https://t.me/proxy?...
         """
+        import html as html_module
+
         import_url = "https://toproxylab.com/ru/proksi-dlya-tg"
         headers = {
             "User-Agent": (
@@ -330,13 +332,14 @@ class ProxyPool:
             ) as client:
                 resp = await client.get(import_url)
                 resp.raise_for_status()
-                html = resp.text
+                # Разэкранируем HTML-entities (&amp; → &) перед поиском
+                raw_html = html_module.unescape(resp.text)
         except Exception as e:
             raise ValueError(f"Не удалось загрузить страницу: {e}")
 
-        # Ищем MTProto прокси ссылки
-        pattern = r'(?:tg://proxy\?[^\s"\'<>&\)\\]+|https?://t\.me/proxy\?[^\s"\'<>&\)\\]+)'
-        found_raw = re.findall(pattern, html, re.IGNORECASE)
+        # Ищем MTProto прокси ссылки (& разрешён в URL после unescape)
+        pattern = r'(?:tg://proxy\?[^\s"\'<>\)\\]+|https?://t\.me/proxy\?[^\s"\'<>\)\\]+)'
+        found_raw = re.findall(pattern, raw_html, re.IGNORECASE)
         found_urls = list(dict.fromkeys(found_raw))  # дедупликация с сохранением порядка
 
         added: list = []
