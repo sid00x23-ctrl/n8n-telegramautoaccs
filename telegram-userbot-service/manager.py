@@ -239,11 +239,16 @@ class AccountManager:
                     except ValueError as e:
                         logger.warning(f"[{account_id}] Прокси {proxy['id'][:8]}... несовместим: {e} — оставляем без изменений")
             self._save_configs()
-        for account_id, cfg in self.configs.items():
-            try:
-                await self._connect_client(account_id, cfg.phone)
-            except Exception as e:
-                logger.error(f"[{account_id}] Ошибка подключения: {e}")
+        sem = asyncio.Semaphore(10)
+
+        async def _connect_one(account_id: str, cfg) -> None:
+            async with sem:
+                try:
+                    await self._connect_client(account_id, cfg.phone)
+                except Exception as e:
+                    logger.error(f"[{account_id}] Ошибка подключения: {e}")
+
+        await asyncio.gather(*[_connect_one(aid, cfg) for aid, cfg in self.configs.items()])
         if self.proxy_pool:
             await self.proxy_pool.start_monitor()
         self._greeting_worker_task = asyncio.create_task(self._greeting_worker())
@@ -1227,8 +1232,8 @@ class AccountManager:
     def get_status(self) -> list[dict]:
         result = []
         now = datetime.now(timezone.utc)
-        for account_id, client in self.clients.items():
-            cfg = self.configs.get(account_id)
+        for account_id, cfg in self.configs.items():
+            client = self.clients.get(account_id)
             authorized = self.authorized.get(account_id, False)
             banned_until = cfg.banned_until if cfg else None
             is_banned = banned_until is not None and banned_until > now
@@ -1238,7 +1243,7 @@ class AccountManager:
                 "phone": cfg.phone if cfg else "—",
                 "name": cfg.name if cfg else "—",
                 "username": cfg.username if cfg else None,
-                "connected": client.is_connected(),
+                "connected": client.is_connected() if client else False,
                 "authorized": authorized,
                 "available": authorized and not is_banned,
                 "banned_until": banned_until.isoformat() if banned_until else None,
