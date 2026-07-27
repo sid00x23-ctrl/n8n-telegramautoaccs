@@ -66,27 +66,39 @@ def _parse_proxy(proxy_url: Optional[str]) -> Tuple[Optional[tuple], Optional[ty
         if not server or not port_str or not secret_hex:
             raise ValueError("MTProto прокси: нужны параметры server, port, secret")
         port = int(port_str)
-        # Telethon сам парсит hex-строку и убирает ee/dd префикс в normalize_secret()
-        # Передаём secret как строку, не конвертируем в bytes
+        # Телеграм принимает секрет в нескольких форматах:
+        # 1. Hex без префикса: <32 hex>
+        # 2. Hex с префиксом: [dd|ee]<32 hex>  — randomized/fake-TLS
+        # 3. Hex с доменом:   [dd|ee]<32 hex><domain hex>  — fake-TLS+SNI
+        # 4. Base64url целой строки (toproxylab и новый формат):
+        #    - 16 байт → plain key
+        #    - 17+ байт, byte[0]=0xEE/0xDD → тип + key[1:17] + опц. домен
         if not all(c in "0123456789abcdefABCDEF" for c in secret_hex):
-            # Пробуем base64url-формат: [ee|dd]<base64url(bytes)>
             import base64 as _b64
+            decoded_bytes = None
             try:
-                if len(secret_hex) >= 2 and secret_hex[:2].lower() in ("dd", "ee"):
-                    prefix = secret_hex[:2].lower()
-                    b64_part = secret_hex[2:]
-                else:
-                    prefix = ""
-                    b64_part = secret_hex
-                padding = (4 - len(b64_part) % 4) % 4
-                decoded_bytes = _b64.urlsafe_b64decode(b64_part + "=" * padding)
-                secret_hex = prefix + decoded_bytes.hex()
+                padding = (4 - len(secret_hex) % 4) % 4
+                decoded_bytes = _b64.urlsafe_b64decode(secret_hex + "=" * padding)
             except Exception:
+                pass
+            if decoded_bytes is None:
                 raise ValueError(f"Неверный secret в MTProto прокси: {secret_hex}")
-        # Telethon после strip ee/dd-префикса ждёт ровно 16 байт.
-        # С префиксом: 2 + 32 = 34 hex-символа; без: 32.
+            if len(decoded_bytes) >= 17 and decoded_bytes[0] in (0xEE, 0xDD):
+                # Тип-маркер есть; берём только первые 16 байт ключа (домен отбрасываем)
+                prefix = "ee" if decoded_bytes[0] == 0xEE else "dd"
+                secret_hex = prefix + decoded_bytes[1:17].hex()
+            elif len(decoded_bytes) >= 16:
+                secret_hex = decoded_bytes[:16].hex()   # plain key
+            else:
+                raise ValueError(
+                    f"MTProto secret слишком короткий после base64url: {len(decoded_bytes)} байт"
+                )
+        # Hex-формат с доменом в конце: [dd|ee]<32 hex><domain hex>
+        # Telethon ждёт ровно 34 символа с префиксом или 32 без → обрезаем лишнее
         has_prefix = secret_hex[:2].lower() in ("dd", "ee")
         expected = 34 if has_prefix else 32
+        if len(secret_hex) > expected:
+            secret_hex = secret_hex[:expected]
         if len(secret_hex) != expected:
             raise ValueError(
                 f"MTProto secret неверной длины: {len(secret_hex) // 2} байт "
