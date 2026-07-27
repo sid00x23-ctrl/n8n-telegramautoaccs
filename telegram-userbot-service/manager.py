@@ -106,15 +106,17 @@ def _parse_proxy(proxy_url: Optional[str]) -> Tuple[Optional[tuple], Optional[ty
             if secret_hex[:2].lower() == "ee":
                 is_fake_tls = True
 
-        # Hex-формат с доменом в конце: [dd|ee]<32 hex><domain hex> → обрезаем домен
+        # Для fake-TLS прокси сохраняем полный секрет (вместе с доменом),
+        # чтобы ConnectionTcpMTProxyFakeTLS мог извлечь SNI из него.
+        # Для остальных типов обрезаем до минимальной длины.
         has_prefix = secret_hex[:2].lower() in ("dd", "ee")
-        expected = 34 if has_prefix else 32
-        if len(secret_hex) > expected:
-            secret_hex = secret_hex[:expected]
-        if len(secret_hex) != expected:
+        min_expected = 34 if has_prefix else 32
+        if not is_fake_tls and len(secret_hex) > min_expected:
+            secret_hex = secret_hex[:min_expected]
+        if len(secret_hex) < min_expected:
             raise ValueError(
-                f"MTProto secret неверной длины: {len(secret_hex) // 2} байт "
-                f"(нужно {'17' if has_prefix else '16'})"
+                f"MTProto secret слишком короткий: {len(secret_hex) // 2} байт "
+                f"(нужно минимум {'17' if has_prefix else '16'})"
             )
 
         conn_class = ConnectionTcpMTProxyFakeTLS if is_fake_tls else ConnectionTcpMTProxyRandomizedIntermediate
@@ -879,6 +881,7 @@ class AccountManager:
         _parse_proxy(proxy_url)  # raises ValueError если формат неверный
         cfg.proxy = proxy_url
         self._save_configs()
+        self._proxy_errors.pop(account_id, None)
         # Переподключаем клиент с новым прокси
         client = self.clients.get(account_id)
         if client:
@@ -887,27 +890,6 @@ class AccountManager:
             except Exception:
                 pass
         await self._connect_client(account_id, cfg.phone)
-
-        # Проверяем реальное соединение (таймаут 10 сек)
-        proxy_error = None
-        client = self.clients.get(account_id)
-        if not client or not client.is_connected():
-            proxy_error = "Не удалось подключиться через прокси"
-        else:
-            try:
-                await asyncio.wait_for(client.is_user_authorized(), timeout=10)
-                self._proxy_errors.pop(account_id, None)
-            except asyncio.TimeoutError:
-                proxy_error = "Таймаут подключения через прокси"
-            except Exception as e:
-                proxy_error = f"Ошибка прокси: {e}"
-
-        if proxy_error:
-            self._proxy_errors[account_id] = proxy_error
-            logger.warning(f"[{account_id}] {proxy_error}")
-        else:
-            self._proxy_errors.pop(account_id, None)
-
         if proxy_url:
             _p = urlparse(proxy_url if "://" in proxy_url else "http://" + proxy_url)
             _qs = parse_qs(_p.query)
@@ -915,12 +897,7 @@ class AccountManager:
         else:
             proxy_host = None
         logger.info(f"[{account_id}] Прокси обновлён: {proxy_host or 'без прокси'}")
-        return {
-            "account_id": account_id,
-            "proxy": proxy_url,
-            "proxy_host": proxy_host,
-            "proxy_error": proxy_error,
-        }
+        return {"account_id": account_id, "proxy": proxy_url, "proxy_host": proxy_host}
 
     async def assign_all_proxies(self) -> dict:
         """
