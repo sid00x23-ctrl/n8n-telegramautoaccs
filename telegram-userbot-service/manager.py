@@ -83,6 +83,15 @@ def _parse_proxy(proxy_url: Optional[str]) -> Tuple[Optional[tuple], Optional[ty
                 secret_hex = prefix + decoded_bytes.hex()
             except Exception:
                 raise ValueError(f"Неверный secret в MTProto прокси: {secret_hex}")
+        # Telethon после strip ee/dd-префикса ждёт ровно 16 байт.
+        # С префиксом: 2 + 32 = 34 hex-символа; без: 32.
+        has_prefix = secret_hex[:2].lower() in ("dd", "ee")
+        expected = 34 if has_prefix else 32
+        if len(secret_hex) != expected:
+            raise ValueError(
+                f"MTProto secret неверной длины: {len(secret_hex) // 2} байт "
+                f"(нужно {'17' if has_prefix else '16'})"
+            )
         return (server, port, secret_hex), ConnectionTcpMTProxyRandomizedIntermediate
 
     # Голый ip:port или user:pass@ip:port — добавляем схему http://
