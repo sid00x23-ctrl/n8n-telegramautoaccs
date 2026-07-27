@@ -331,6 +331,15 @@ class ProxyPool:
     #  Проверка одного прокси                                              #
     # ------------------------------------------------------------------ #
 
+    async def check_all_proxies(self) -> dict:
+        """Проверяет все прокси параллельно. Возвращает итоги."""
+        if not self.proxies:
+            return {"total": 0, "ok": 0, "error": 0}
+        tasks = [self._check_one_safe(p["id"]) for p in list(self.proxies)]
+        await asyncio.gather(*tasks)
+        ok = sum(1 for p in self.proxies if p["status"] == "ok")
+        return {"total": len(self.proxies), "ok": ok, "error": len(self.proxies) - ok}
+
     async def check_proxy(self, proxy_id: str) -> dict:
         proxy = next((p for p in self.proxies if p["id"] == proxy_id), None)
         if not proxy:

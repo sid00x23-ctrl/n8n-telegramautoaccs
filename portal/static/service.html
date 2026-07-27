@@ -323,6 +323,13 @@
             <span id="importProxiesLabel">Импорт toproxylab</span>
             <span class="spinner hidden" id="importProxiesSpinner"></span>
           </button>
+          <button class="btn btn-ghost btn-sm" id="checkAllProxiesBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            <span id="checkAllProxiesLabel">Проверить все</span>
+            <span class="spinner hidden" id="checkAllProxiesSpinner"></span>
+          </button>
           <button class="btn btn-ghost btn-sm" id="addProxyBtn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -1511,6 +1518,24 @@
     }
 
     $('refreshProxiesBtn').addEventListener('click', loadProxies);
+
+    // ── Check all proxies ─────────────────────────────────────────────────────
+    $('checkAllProxiesBtn').addEventListener('click', async () => {
+      $('checkAllProxiesSpinner').classList.remove('hidden');
+      $('checkAllProxiesLabel').textContent = 'Проверяю...';
+      $('checkAllProxiesBtn').disabled = true;
+      try {
+        const res = await api('POST', '/api/proxies/check-all');
+        toast(`Проверено: ${res.total}, рабочих: ${res.ok}, ошибок: ${res.error}`);
+        loadProxies();
+      } catch (e) {
+        toast(e.message, 'err');
+      } finally {
+        $('checkAllProxiesSpinner').classList.add('hidden');
+        $('checkAllProxiesLabel').textContent = 'Проверить все';
+        $('checkAllProxiesBtn').disabled = false;
+      }
+    });
 
     // ── Assign proxies to all accounts ────────────────────────────────────────
     $('assignProxiesBtn').addEventListener('click', async () => {

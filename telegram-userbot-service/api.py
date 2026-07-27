@@ -304,6 +304,12 @@ def create_app(manager: AccountManager, proxy_pool=None) -> FastAPI:
             raise HTTPException(status_code=503, detail="Proxy pool не инициализирован")
         return proxy_pool.update_settings(body.check_interval_seconds)
 
+    @app.post("/proxies/check-all", tags=["proxies"])
+    async def check_all_proxies():
+        if not proxy_pool:
+            raise HTTPException(status_code=503, detail="Proxy pool не инициализирован")
+        return await proxy_pool.check_all_proxies()
+
     @app.post("/proxies/{proxy_id}/check", tags=["proxies"])
     async def check_proxy(proxy_id: str):
         if not proxy_pool:
