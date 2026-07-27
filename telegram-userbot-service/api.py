@@ -9,10 +9,10 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 from manager import AccountManager
-from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest, WarmupInitiatorRequest, ProxyRequest
+from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest, WarmupInitiatorRequest, ProxyRequest, AddProxyRequest, ProxySettingsRequest
 
 
-def create_app(manager: AccountManager) -> FastAPI:
+def create_app(manager: AccountManager, proxy_pool=None) -> FastAPI:
     app = FastAPI(
         title="Telegram Userbot Service",
         description="HTTP API для n8n — отправка сообщений через личные Telegram-аккаунты",
@@ -247,6 +247,64 @@ def create_app(manager: AccountManager) -> FastAPI:
             raise HTTPException(status_code=404, detail=f"Аккаунт '{account_id}' не найден")
         await manager.logout(account_id)
         return {"status": "deleted", "account_id": account_id}
+
+    # ------------------------------------------------------------------ #
+    #  Proxy pool                                                           #
+    # ------------------------------------------------------------------ #
+
+    @app.get("/proxies", tags=["proxies"])
+    async def list_proxies():
+        if not proxy_pool:
+            return []
+        return proxy_pool.list_proxies()
+
+    @app.post("/proxies", tags=["proxies"])
+    async def add_proxy(body: AddProxyRequest):
+        if not proxy_pool:
+            raise HTTPException(status_code=503, detail="Proxy pool не инициализирован")
+        try:
+            return await proxy_pool.add_proxy(body.url)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.post("/proxies/import", tags=["proxies"])
+    async def import_proxies():
+        if not proxy_pool:
+            raise HTTPException(status_code=503, detail="Proxy pool не инициализирован")
+        try:
+            return await proxy_pool.import_from_toproxylab()
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.get("/proxies/settings", tags=["proxies"])
+    async def get_proxy_settings():
+        if not proxy_pool:
+            return {"check_interval_seconds": 300}
+        return proxy_pool.get_settings()
+
+    @app.patch("/proxies/settings", tags=["proxies"])
+    async def update_proxy_settings(body: ProxySettingsRequest):
+        if not proxy_pool:
+            raise HTTPException(status_code=503, detail="Proxy pool не инициализирован")
+        return proxy_pool.update_settings(body.check_interval_seconds)
+
+    @app.post("/proxies/{proxy_id}/check", tags=["proxies"])
+    async def check_proxy(proxy_id: str):
+        if not proxy_pool:
+            raise HTTPException(status_code=503, detail="Proxy pool не инициализирован")
+        try:
+            return await proxy_pool.check_proxy(proxy_id)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+
+    @app.delete("/proxies/{proxy_id}", tags=["proxies"])
+    async def remove_proxy(proxy_id: str):
+        if not proxy_pool:
+            raise HTTPException(status_code=503, detail="Proxy pool не инициализирован")
+        try:
+            return proxy_pool.remove_proxy(proxy_id)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
 
     @app.post("/react", tags=["messaging"])
     async def react_message(body: ReactRequest):

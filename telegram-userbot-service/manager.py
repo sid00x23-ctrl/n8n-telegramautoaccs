@@ -31,6 +31,7 @@ from telethon.tl.types import (
 
 from config import settings
 from models import AccountConfig
+from proxy_manager import ProxyPool
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,7 @@ def _parse_proxy(proxy_url: Optional[str]) -> Tuple[Optional[tuple], Optional[ty
 
 
 class AccountManager:
-    def __init__(self):
+    def __init__(self, proxy_pool: Optional[ProxyPool] = None):
         # account_id → TelegramClient
         self.clients: dict[str, TelegramClient] = {}
         # account_id → AccountConfig
@@ -121,6 +122,7 @@ class AccountManager:
         self._warmup_queue: asyncio.Queue = asyncio.Queue()
         self._warmup_worker_task: Optional[asyncio.Task] = None
 
+        self.proxy_pool: Optional[ProxyPool] = proxy_pool
         self._load_configs()
         self._load_sent_chats()
 
@@ -173,12 +175,30 @@ class AccountManager:
 
     async def start_all(self):
         """Подключить все сохранённые аккаунты."""
+        # Синхронизируем прокси из пула перед подключением клиентов
+        if self.proxy_pool:
+            for account_id, cfg in self.configs.items():
+                proxy = self.proxy_pool.get_account_proxy(account_id)
+                if proxy:
+                    cfg.proxy = proxy["url"]
+                else:
+                    new_proxy = self.proxy_pool.assign_proxy_to_account(account_id)
+                    if new_proxy:
+                        cfg.proxy = new_proxy["url"]
+                        logger.info(f"[{account_id}] Автоназначен прокси {new_proxy['id'][:8]}...")
+                    else:
+                        logger.warning(f"[{account_id}] Нет свободных прокси — работает без прокси")
+            self._save_configs()
         for account_id, cfg in self.configs.items():
             await self._connect_client(account_id, cfg.phone)
+        if self.proxy_pool:
+            await self.proxy_pool.start_monitor()
         self._greeting_worker_task = asyncio.create_task(self._greeting_worker())
         self._warmup_worker_task = asyncio.create_task(self._warmup_worker())
 
     async def stop_all(self):
+        if self.proxy_pool:
+            await self.proxy_pool.stop_monitor()
         if self._greeting_worker_task:
             self._greeting_worker_task.cancel()
         if self._warmup_worker_task:
@@ -609,6 +629,8 @@ class AccountManager:
             raise ValueError(f"Аккаунт '{account_id}' не найден. Список: {list(self.clients.keys())}")
 
         client = self.clients[account_id]
+        await self._ensure_proxy(account_id)
+        client = self.clients[account_id]  # обновляем после возможного переподключения
 
         if not self.authorized.get(account_id):
             raise ValueError(f"Аккаунт '{account_id}' не авторизован")
@@ -699,6 +721,35 @@ class AccountManager:
                 await self._send_delivery_callback("error", account_id, chat_id, "SpamBan: PeerFloodError (авто-бан отключён)")
                 raise ValueError("PeerFloodError: Telegram ограничил отправку (авто-бан отключён)") from e
         except Exception as e:
+            # Если соединение потеряно — failover прокси и повтор
+            _client_now = self.clients.get(account_id)
+            _conn_lost = (
+                not _client_now or not _client_now.is_connected() or
+                isinstance(e, (ConnectionError, OSError, asyncio.TimeoutError))
+            )
+            if _conn_lost and self.proxy_pool:
+                _cur_proxy = self.proxy_pool.get_account_proxy(account_id)
+                if _cur_proxy:
+                    logger.warning(f"[{account_id}] Потеря соединения при отправке, failover...")
+                    _cfg_r = self.configs.get(account_id)
+                    _new_prx = await self.proxy_pool.failover(account_id, _cur_proxy["id"])
+                    if _new_prx and _cfg_r:
+                        _cfg_r.proxy = _new_prx["url"]
+                        self._save_configs()
+                        await self._connect_client(account_id, _cfg_r.phone)
+                        _rc = self.clients.get(account_id)
+                        if _rc and _rc.is_connected():
+                            try:
+                                _re = entity if entity is not None else PeerUser(chat_id)
+                                _lp = not (_cfg_r.link_preview_disabled if _cfg_r else False)
+                                await _rc.send_message(_re, text, link_preview=_lp)
+                                await self._send_delivery_callback("sent", account_id, chat_id)
+                                self._sent_chats.setdefault(account_id, set()).add(chat_id)
+                                self._save_sent_chats()
+                                logger.info(f"[{account_id}] Retry после failover успешен")
+                                return {"status": "sent", "account_id": account_id, "chat_id": chat_id}
+                            except Exception as _re_e:
+                                logger.error(f"[{account_id}] Retry не удался: {_re_e}")
             await self._send_delivery_callback("error", account_id, chat_id, str(e))
             raise ValueError(f"Ошибка отправки: {e}") from e
 
@@ -733,6 +784,34 @@ class AccountManager:
     # ------------------------------------------------------------------ #
     #  Настройки превью ссылок                                             #
     # ------------------------------------------------------------------ #
+
+    async def _ensure_proxy(self, account_id: str):
+        """
+        Проверяет прокси аккаунта перед операцией.
+        Если прокси помечен как error — делает failover и переподключает клиент.
+        """
+        if not self.proxy_pool:
+            return
+        proxy = self.proxy_pool.get_account_proxy(account_id)
+        if not proxy or proxy["status"] != "error":
+            return
+        logger.warning(f"[{account_id}] Прокси {proxy['id'][:8]}... error — выполняем failover...")
+        cfg = self.configs.get(account_id)
+        new_proxy = await self.proxy_pool.failover(account_id, proxy["id"])
+        if new_proxy and cfg:
+            cfg.proxy = new_proxy["url"]
+            self._save_configs()
+            client = self.clients.get(account_id)
+            if client:
+                try:
+                    await client.disconnect()
+                except Exception:
+                    pass
+            await self._connect_client(account_id, cfg.phone)
+            self._proxy_errors.pop(account_id, None)
+            logger.info(f"[{account_id}] Переключён на прокси {new_proxy['id'][:8]}...")
+        else:
+            logger.warning(f"[{account_id}] Нет рабочих прокси для failover")
 
     async def set_proxy(self, account_id: str, proxy_url: Optional[str]) -> dict:
         cfg = self.configs.get(account_id)
@@ -860,6 +939,8 @@ class AccountManager:
         self.authorized.pop(account_id, None)
         self._auth_state.pop(account_id, None)
 
+        if self.proxy_pool:
+            self.proxy_pool.unassign_account(account_id)
         self._save_configs()
         logger.info(f"Аккаунт {account_id} удалён")
 

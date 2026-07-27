@@ -75,3 +75,11 @@ class WarmupInitiatorRequest(BaseModel):
 
 class ProxyRequest(BaseModel):
     proxy: Optional[str] = None  # socks5://user:pass@host:port | http://... | None — без прокси
+
+
+class AddProxyRequest(BaseModel):
+    url: str  # tg://proxy?... | socks5://... | http://...
+
+
+class ProxySettingsRequest(BaseModel):
+    check_interval_seconds: Optional[int] = None

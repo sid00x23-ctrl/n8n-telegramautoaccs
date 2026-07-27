@@ -311,6 +311,46 @@ async def set_proxy(account_id: str, request: Request):
     return await _proxy("PATCH", f"/accounts/{account_id}/proxy", json_body=body)
 
 
+# ── Proxy pool ────────────────────────────────────────────────────────────────
+
+@app.get("/api/proxies")
+async def get_proxies(request: Request):
+    require_auth(request)
+    return await _proxy("GET", "/proxies")
+
+@app.post("/api/proxies/import")
+async def import_proxies(request: Request):
+    require_auth(request)
+    return await _proxy("POST", "/proxies/import", timeout=60.0)
+
+@app.get("/api/proxies/settings")
+async def get_proxy_settings(request: Request):
+    require_auth(request)
+    return await _proxy("GET", "/proxies/settings")
+
+@app.patch("/api/proxies/settings")
+async def update_proxy_settings(request: Request):
+    require_auth(request)
+    body = await request.json()
+    return await _proxy("PATCH", "/proxies/settings", json_body=body)
+
+@app.post("/api/proxies/{proxy_id}/check")
+async def check_proxy(proxy_id: str, request: Request):
+    require_auth(request)
+    return await _proxy("POST", f"/proxies/{proxy_id}/check", timeout=15.0)
+
+@app.delete("/api/proxies/{proxy_id}")
+async def delete_proxy(proxy_id: str, request: Request):
+    require_auth(request)
+    return await _proxy("DELETE", f"/proxies/{proxy_id}")
+
+@app.post("/api/proxies")
+async def add_proxy(request: Request):
+    require_auth(request)
+    body = await request.json()
+    return await _proxy("POST", "/proxies", json_body=body)
+
+
 @app.patch("/api/accounts/{account_id}/warmup_initiator")
 async def update_warmup_initiator(account_id: str, request: Request):
     require_auth(request)

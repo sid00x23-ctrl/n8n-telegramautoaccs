@@ -162,6 +162,41 @@
     }
     .success-name { font-size: 18px; font-weight: 600; }
     .success-sub { font-size: 14px; color: var(--text-2); }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .tab-btn {
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-2);
+      cursor: pointer;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      margin-bottom: -1px;
+      transition: color .2s, border-color .2s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ── Proxy view ── */
+    .proxy-url {
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 11px;
+      color: var(--text-2);
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: block;
+    }
+    .proxy-accounts-list { font-size: 12px; color: var(--text-2); }
   </style>
 </head>
 <body>
@@ -182,6 +217,14 @@
   </header>
 
   <main class="main page">
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tabAccounts">Аккаунты</button>
+      <button class="tab-btn" id="tabProxies">Прокси</button>
+    </div>
+
+    <!-- ══ Вид: Аккаунты ══ -->
+    <div id="accountsView">
     <!-- Toolbar -->
     <div class="toolbar fade-up">
       <div class="accounts-count" id="accountsCount">Загрузка...</div>
@@ -246,6 +289,53 @@
         Загрузка аккаунтов...
       </div>
     </div>
+    </div><!-- /accountsView -->
+
+    <!-- ══ Вид: Прокси ══ -->
+    <div id="proxiesView" class="hidden">
+      <!-- Proxy toolbar -->
+      <div class="toolbar fade-up">
+        <div class="accounts-count" id="proxiesCount">Загрузка...</div>
+        <div class="toolbar-actions">
+          <button class="btn btn-ghost btn-sm" id="refreshProxiesBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 4v6h-6M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            Обновить
+          </button>
+          <button class="btn btn-ghost btn-sm" id="importProxiesBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span id="importProxiesLabel">Импорт toproxylab</span>
+            <span class="spinner hidden" id="importProxiesSpinner"></span>
+          </button>
+          <button class="btn btn-ghost btn-sm" id="addProxyBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Добавить
+          </button>
+          <button class="btn btn-ghost btn-sm" id="proxySettingsBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+            </svg>
+            Настройки
+          </button>
+        </div>
+      </div>
+      <!-- Proxy table -->
+      <div id="proxyTableArea" class="fade-up delay-1">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          Загрузка прокси...
+        </div>
+      </div>
+    </div><!-- /proxiesView -->
   </main>
 
   <!-- ═══════════════ MODAL: Добавить по телефону ═══════════════ -->
@@ -509,6 +599,57 @@
     </div>
   </div>
 
+  <!-- ═══════════════ MODAL: Добавить прокси ═══════════════ -->
+  <div class="modal-overlay hidden" id="addProxyModal">
+    <div class="modal">
+      <div class="modal-title">Добавить прокси</div>
+      <div class="modal-body step" style="gap:14px">
+        <p style="font-size:13px;color:var(--text-2);margin:0">
+          Формат MTProto:<br>
+          <code>tg://proxy?server=...&port=...&secret=...</code><br>
+          <code>https://t.me/proxy?server=...&port=...&secret=...</code>
+        </p>
+        <input class="input-field" type="text" id="addProxyInput"
+          placeholder="tg://proxy?server=...&port=443&secret=..."
+          autocomplete="off" spellcheck="false" />
+        <div class="text-err text-sm hidden" id="addProxyErr"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="addProxyCancelBtn">Отмена</button>
+        <button class="btn btn-primary" id="addProxySaveBtn">
+          <span>Добавить и проверить</span>
+          <span class="spinner hidden" id="addProxySpinner"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ MODAL: Настройки прокси ═══════════════ -->
+  <div class="modal-overlay hidden" id="proxySettingsModal">
+    <div class="modal">
+      <div class="modal-title">Настройки мониторинга прокси</div>
+      <div class="modal-body step" style="gap:18px">
+        <div class="input-wrap">
+          <label>Интервал проверки (секунды)</label>
+          <input class="input-field" type="number" id="proxyCheckInterval"
+            min="30" max="3600" placeholder="300" style="width:120px" />
+        </div>
+        <p style="font-size:13px;color:var(--text-2);margin:0">
+          Фоновый мониторинг проверяет все прокси с заданным интервалом.
+          Также проверка выполняется автоматически перед каждым действием аккаунта.
+        </p>
+        <div class="text-err text-sm hidden" id="proxySettingsErr"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="proxySettingsCancelBtn">Отмена</button>
+        <button class="btn btn-primary" id="proxySettingsSaveBtn">
+          <span>Сохранить</span>
+          <span class="spinner hidden" id="proxySettingsSpinner"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════════════ MODAL: Подтверждение удаления ═══════════════ -->
   <div class="modal-overlay hidden" id="deleteModal">
     <div class="modal">
@@ -563,6 +704,8 @@
 
       if (acc.proxy_error) {
         badges.push(`<span class="badge badge-err" title="${esc(acc.proxy_error)}"><span class="badge-dot"></span>Прокси: ошибка</span>`);
+      } else if (!acc.proxy) {
+        badges.push(`<span class="badge badge-warn"><span class="badge-dot"></span>Без прокси</span>`);
       }
 
       if (acc.banned_until) {
@@ -1289,6 +1432,226 @@
           else { hideEl('deleteModal'); deleteAccId = null; }
         }
       });
+    });
+
+    // ── Tabs ─────────────────────────────────────────────────────────────────
+    function showTab(name) {
+      const isProxy = name === 'proxies';
+      $('accountsView').classList.toggle('hidden', isProxy);
+      $('proxiesView').classList.toggle('hidden', !isProxy);
+      $('tabAccounts').classList.toggle('active', !isProxy);
+      $('tabProxies').classList.toggle('active', isProxy);
+      if (isProxy) loadProxies();
+    }
+
+    $('tabAccounts').addEventListener('click', () => showTab('accounts'));
+    $('tabProxies').addEventListener('click', () => showTab('proxies'));
+
+    // ── Proxy pool ────────────────────────────────────────────────────────────
+    let allProxies = [];
+
+    function proxyStatusHtml(p) {
+      if (p.status === 'ok')       return `<span style="color:#22c55e">● OK</span>`;
+      if (p.status === 'error')    return `<span style="color:#ef4444" title="${esc(p.error || '')}">● Ошибка</span>`;
+      if (p.status === 'checking') return `<span style="color:#f59e0b">● Проверка...</span>`;
+      return `<span style="color:var(--text-2)">—</span>`;
+    }
+
+    function proxyTypeLabel(type) {
+      if (type === 'mtproto') return '<span style="font-size:11px;color:var(--primary);font-weight:600">MTProto</span>';
+      if (type === 'socks5')  return '<span style="font-size:11px;color:#a78bfa">SOCKS5</span>';
+      if (type === 'socks4')  return '<span style="font-size:11px;color:#a78bfa">SOCKS4</span>';
+      return '<span style="font-size:11px;color:var(--text-2)">HTTP</span>';
+    }
+
+    async function loadProxies() {
+      const area = $('proxyTableArea');
+      area.innerHTML = `<div class="loading-state"><div class="spinner"></div> Загрузка...</div>`;
+      try {
+        allProxies = await api('GET', '/api/proxies');
+        renderProxiesTable(allProxies);
+      } catch (e) {
+        area.innerHTML = `<div class="empty-state"><p style="color:var(--error)">${e.message}</p></div>`;
+        $('proxiesCount').textContent = 'Ошибка загрузки';
+      }
+    }
+
+    function renderProxiesTable(proxies) {
+      const area = $('proxyTableArea');
+      $('proxiesCount').textContent = `Прокси: ${proxies.length}`;
+
+      if (!proxies.length) {
+        area.innerHTML = `
+          <div class="table-wrap">
+            <div class="empty-state">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              <p>Нет прокси</p>
+              <div class="hint">Добавьте прокси вручную или импортируйте с toproxylab</div>
+            </div>
+          </div>`;
+        return;
+      }
+
+      area.innerHTML = `
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Тип</th>
+                <th>URL</th>
+                <th>Статус</th>
+                <th>Аккаунты</th>
+                <th>Проверен</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${proxies.map(p => {
+                const accs = (p.assigned_accounts || []);
+                const lastCheck = p.last_checked
+                  ? new Date(p.last_checked).toLocaleTimeString('ru', {hour:'2-digit',minute:'2-digit'})
+                  : '—';
+                return `
+                <tr>
+                  <td>${proxyTypeLabel(p.type)}</td>
+                  <td><span class="proxy-url" title="${esc(p.url)}">${esc(p.url)}</span></td>
+                  <td>${proxyStatusHtml(p)}</td>
+                  <td><span class="proxy-accounts-list">${accs.length > 0 ? esc(accs.join(', ')) : '<span style="color:var(--text-2)">—</span>'}</span></td>
+                  <td><span style="font-size:12px;color:var(--text-2)">${lastCheck}</span></td>
+                  <td style="text-align:right">
+                    <div style="display:flex;gap:6px;justify-content:flex-end">
+                      <button class="btn btn-ghost btn-sm" data-proxy-check="${esc(p.id)}" title="Проверить прокси">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                          <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                      </button>
+                      <button class="btn btn-danger btn-sm" data-proxy-del="${esc(p.id)}" title="Удалить прокси">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                          <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+
+      area.querySelectorAll('[data-proxy-check]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          try {
+            await api('POST', `/api/proxies/${encodeURIComponent(btn.dataset.proxyCheck)}/check`);
+            toast('Прокси проверен');
+            loadProxies();
+          } catch (e) { toast(e.message, 'err'); }
+          finally { btn.disabled = false; }
+        });
+      });
+
+      area.querySelectorAll('[data-proxy-del]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Удалить этот прокси?')) return;
+          btn.disabled = true;
+          try {
+            await api('DELETE', `/api/proxies/${encodeURIComponent(btn.dataset.proxyDel)}`);
+            toast('Прокси удалён');
+            loadProxies();
+          } catch (e) { toast(e.message, 'err'); }
+          finally { btn.disabled = false; }
+        });
+      });
+    }
+
+    $('refreshProxiesBtn').addEventListener('click', loadProxies);
+
+    // ── Import from toproxylab ────────────────────────────────────────────────
+    $('importProxiesBtn').addEventListener('click', async () => {
+      $('importProxiesSpinner').classList.remove('hidden');
+      $('importProxiesLabel').textContent = 'Импорт...';
+      $('importProxiesBtn').disabled = true;
+      try {
+        const res = await api('POST', '/api/proxies/import');
+        toast(`Добавлено: ${res.added}, пропущено: ${res.skipped}, ошибок: ${res.errors}`);
+        loadProxies();
+      } catch (e) {
+        toast(e.message, 'err');
+      } finally {
+        $('importProxiesSpinner').classList.add('hidden');
+        $('importProxiesLabel').textContent = 'Импорт toproxylab';
+        $('importProxiesBtn').disabled = false;
+      }
+    });
+
+    // ── Add proxy modal ───────────────────────────────────────────────────────
+    $('addProxyBtn').addEventListener('click', () => {
+      $('addProxyInput').value = '';
+      hideEl('addProxyErr');
+      showEl('addProxyModal');
+      setTimeout(() => $('addProxyInput').focus(), 50);
+    });
+    $('addProxyCancelBtn').addEventListener('click', () => hideEl('addProxyModal'));
+    $('addProxyModal').addEventListener('click', e => { if (e.target === $('addProxyModal')) hideEl('addProxyModal'); });
+
+    $('addProxySaveBtn').addEventListener('click', async () => {
+      const url = $('addProxyInput').value.trim();
+      if (!url) { $('addProxyErr').textContent = 'Введите URL прокси'; showEl('addProxyErr'); return; }
+      hideEl('addProxyErr');
+      setSpinner('addProxySpinner', 'addProxySaveBtn', true);
+      try {
+        const res = await api('POST', '/api/proxies', { url });
+        if (res.status === 'error') {
+          $('addProxyErr').textContent = res.error || 'Ошибка проверки';
+          showEl('addProxyErr');
+          toast('Прокси добавлен, но недоступен', 'err');
+        } else {
+          toast('Прокси добавлен — соединение OK');
+          hideEl('addProxyModal');
+        }
+        loadProxies();
+      } catch (e) {
+        $('addProxyErr').textContent = e.message;
+        showEl('addProxyErr');
+      } finally {
+        setSpinner('addProxySpinner', 'addProxySaveBtn', false);
+      }
+    });
+
+    // ── Proxy settings modal ──────────────────────────────────────────────────
+    $('proxySettingsBtn').addEventListener('click', async () => {
+      hideEl('proxySettingsErr');
+      try {
+        const s = await api('GET', '/api/proxies/settings');
+        $('proxyCheckInterval').value = s.check_interval_seconds || 300;
+      } catch (e) {
+        $('proxyCheckInterval').value = 300;
+      }
+      showEl('proxySettingsModal');
+    });
+    $('proxySettingsCancelBtn').addEventListener('click', () => hideEl('proxySettingsModal'));
+    $('proxySettingsModal').addEventListener('click', e => { if (e.target === $('proxySettingsModal')) hideEl('proxySettingsModal'); });
+
+    $('proxySettingsSaveBtn').addEventListener('click', async () => {
+      const val = parseInt($('proxyCheckInterval').value, 10);
+      if (!val || val < 30) { $('proxySettingsErr').textContent = 'Минимум 30 секунд'; showEl('proxySettingsErr'); return; }
+      hideEl('proxySettingsErr');
+      setSpinner('proxySettingsSpinner', 'proxySettingsSaveBtn', true);
+      try {
+        await api('PATCH', '/api/proxies/settings', { check_interval_seconds: val });
+        toast('Настройки сохранены');
+        hideEl('proxySettingsModal');
+      } catch (e) {
+        $('proxySettingsErr').textContent = e.message;
+        showEl('proxySettingsErr');
+      } finally {
+        setSpinner('proxySettingsSpinner', 'proxySettingsSaveBtn', false);
+      }
     });
 
     // ── Спам-бан: живой обратный отсчёт ──────────────────────────────────────

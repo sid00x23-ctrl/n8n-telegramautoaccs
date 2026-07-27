@@ -11,6 +11,7 @@ from api import create_app
 from cli import CLI
 from config import settings
 from manager import AccountManager
+from proxy_manager import ProxyPool
 
 console = Console()
 
@@ -55,7 +56,8 @@ async def main():
     logging.basicConfig(level=logging.WARNING, format=LOG_FORMAT)
     logging.getLogger("telethon").setLevel(logging.ERROR)
 
-    manager = AccountManager()
+    proxy_pool = ProxyPool()
+    manager = AccountManager(proxy_pool=proxy_pool)
 
     if HEADLESS:
         # Серверный режим: сначала поднимаем HTTP-сервер, потом подключаем аккаунты фоном.
@@ -63,7 +65,7 @@ async def main():
         logging.getLogger().setLevel(logging.INFO)
         logging.getLogger("telethon").setLevel(logging.WARNING)
 
-        app = create_app(manager)
+        app = create_app(manager, proxy_pool)
         config = uvicorn.Config(app, host=settings.SERVICE_HOST, port=settings.SERVICE_PORT,
                                 log_level="warning", access_log=False)
         server = uvicorn.Server(config)
@@ -111,7 +113,7 @@ async def main():
         f"[dim]http://{settings.SERVICE_HOST}:{settings.SERVICE_PORT}[/dim]"
     )
 
-    app = create_app(manager)
+    app = create_app(manager, proxy_pool)
     config = uvicorn.Config(app, host=settings.SERVICE_HOST, port=settings.SERVICE_PORT,
                             log_level="warning", access_log=False)
     server = uvicorn.Server(config)
