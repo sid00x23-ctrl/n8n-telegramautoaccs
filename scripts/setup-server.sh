@@ -19,7 +19,7 @@ curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt-get install -y nodejs
 
 echo "==> Устанавливаем n8n и PM2 глобально"
-npm install -g n8n pm2
+npm install -g n8n@2.8.4 pm2
 
 echo "==> Создаём venv для portal"
 python3 -m venv "$REPO_DIR/portal/.venv"
@@ -30,6 +30,9 @@ echo "==> Создаём venv для telegram-userbot-service"
 python3 -m venv "$REPO_DIR/telegram-userbot-service/.venv"
 "$REPO_DIR/telegram-userbot-service/.venv/bin/pip" install --upgrade pip
 "$REPO_DIR/telegram-userbot-service/.venv/bin/pip" install -r "$REPO_DIR/telegram-userbot-service/requirements.txt"
+
+echo "==> Патчим n8n (enterprise-фичи + фикс /n8n/ роутинга)"
+bash "$REPO_DIR/scripts/patch-n8n.sh"
 
 echo "==> Собираем кастомные ноды n8n"
 cd "$REPO_DIR/n8n-nodes"

@@ -23,6 +23,11 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
+    # Фикс двойного префикса /n8n/n8n/ — Vue Router иногда генерирует такие URL
+    location ^~ /n8n/n8n/ {
+        rewrite ^/n8n(/n8n/.+)$ $1 redirect;
+    }
+
     location /n8n/ {
         proxy_pass http://n8n_backend/;
         proxy_http_version 1.1;
