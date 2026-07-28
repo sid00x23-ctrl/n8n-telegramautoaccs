@@ -744,7 +744,36 @@ class AccountManager:
         client = self.clients[account_id]  # обновляем после возможного переподключения
 
         if not self.authorized.get(account_id):
-            raise ValueError(f"Аккаунт '{account_id}' не авторизован")
+            # Пробуем failover на следующий прокси и переподключаемся
+            cfg = self.configs.get(account_id)
+            if self.proxy_pool and cfg:
+                cur_proxy = self.proxy_pool.get_account_proxy(account_id)
+                proxy_id_to_exclude = cur_proxy["id"] if cur_proxy else None
+                new_proxy = await self.proxy_pool.failover(account_id, proxy_id_to_exclude) if proxy_id_to_exclude else self.proxy_pool.get_best_proxy()
+                if new_proxy:
+                    logger.warning(f"[{account_id}] Не авторизован, пробуем следующий прокси {new_proxy['id'][:8]}...")
+                    cfg.proxy = new_proxy["url"]
+                    self._save_configs()
+                    existing = self.clients.get(account_id)
+                    if existing:
+                        try:
+                            await existing.disconnect()
+                        except Exception:
+                            pass
+                    await self._connect_client(account_id, cfg.phone)
+                else:
+                    logger.warning(f"[{account_id}] Не авторизован, нет доступных прокси для failover")
+            elif cfg:
+                logger.warning(f"[{account_id}] Не авторизован, пробуем переподключиться...")
+                existing = self.clients.get(account_id)
+                if existing:
+                    try:
+                        await existing.disconnect()
+                    except Exception:
+                        pass
+                await self._connect_client(account_id, cfg.phone)
+            if not self.authorized.get(account_id):
+                raise ValueError(f"Аккаунт '{account_id}' не авторизован")
 
         cfg = self.configs.get(account_id)
         # Для rate_limited (рассылка новым) — блокируем при бане.
