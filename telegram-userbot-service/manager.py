@@ -12,7 +12,7 @@ import httpx
 from telethon import TelegramClient, events
 from telethon.network.connection import (
     ConnectionTcpMTProxyRandomizedIntermediate,
-    ConnectionTcpFull,
+    ConnectionTcpAbridged,
 )
 from fake_tls_mtproxy import ConnectionTcpMTProxyFakeTLS
 from telethon.errors import (
@@ -35,6 +35,40 @@ from models import AccountConfig
 from proxy_manager import ProxyPool
 
 logger = logging.getLogger(__name__)
+
+# Список реальных Android-устройств для имитации официального клиента.
+# Каждый аккаунт получает одно устройство детерминированно по account_id.
+_ANDROID_DEVICES = [
+    ("Samsung SM-S918B", "Android 14"),
+    ("Samsung SM-G991B", "Android 13"),
+    ("Google Pixel 8 Pro", "Android 14"),
+    ("Google Pixel 7a", "Android 13"),
+    ("Xiaomi 2210132G", "Android 13"),
+    ("Xiaomi 22071212AG", "Android 13"),
+    ("OnePlus CPH2447", "Android 14"),
+    ("Samsung SM-A546E", "Android 13"),
+    ("Samsung SM-F946B", "Android 14"),
+    ("POCO X6 Pro", "Android 13"),
+]
+_TG_APP_VERSION = "10.14.5"
+
+
+def _get_device_params(account_id: str) -> dict:
+    """Возвращает детерминированные параметры устройства для аккаунта.
+
+    Один и тот же account_id всегда даёт одинаковый fingerprint,
+    но разные аккаунты получают разные устройства.
+    """
+    rng = random.Random(account_id)
+    device_model, system_version = rng.choice(_ANDROID_DEVICES)
+    return {
+        "device_model": device_model,
+        "system_version": system_version,
+        "app_version": _TG_APP_VERSION,
+        "lang_code": "ru",
+        "system_lang_code": "ru-RU",
+    }
+
 
 CONFIGS_FILE    = Path("accounts_config.json")
 SENT_CHATS_FILE = Path("sent_chats.json")
@@ -286,7 +320,15 @@ class AccountManager:
             kwargs["proxy"] = proxy
         if connection_class:
             kwargs["connection"] = connection_class
-        client = TelegramClient(session_path, settings.TELEGRAM_API_ID, settings.TELEGRAM_API_HASH, **kwargs)
+        else:
+            kwargs["connection"] = ConnectionTcpAbridged
+        client = TelegramClient(
+            session_path,
+            settings.TELEGRAM_API_ID,
+            settings.TELEGRAM_API_HASH,
+            **_get_device_params(account_id),
+            **kwargs,
+        )
         self.clients[account_id] = client
 
         try:
@@ -538,7 +580,13 @@ class AccountManager:
 
         if account_id not in self.clients:
             session_path = str(settings.SESSIONS_DIR / account_id)
-            client = TelegramClient(session_path, settings.TELEGRAM_API_ID, settings.TELEGRAM_API_HASH)
+            client = TelegramClient(
+                session_path,
+                settings.TELEGRAM_API_ID,
+                settings.TELEGRAM_API_HASH,
+                connection=ConnectionTcpAbridged,
+                **_get_device_params(account_id),
+            )
             self.clients[account_id] = client
 
         client = self.clients[account_id]
