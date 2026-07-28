@@ -830,10 +830,24 @@
       });
 
       area.querySelectorAll('[data-warmup]').forEach(btn => {
-        btn.addEventListener('click', () => openWarmupInitiatorModal(
-          btn.dataset.warmup,
-          btn.dataset.warmupEnabled === 'true',
-        ));
+        btn.addEventListener('click', async () => {
+          const accId = btn.dataset.warmup;
+          const newEnabled = btn.dataset.warmupEnabled !== 'true';
+          btn.disabled = true;
+          try {
+            await api('PATCH', `/api/accounts/${encodeURIComponent(accId)}/warmup_initiator`, { enabled: newEnabled });
+            btn.dataset.warmupEnabled = newEnabled;
+            btn.querySelector('svg').setAttribute('stroke', newEnabled ? '#22c55e' : 'currentColor');
+            btn.title = `Прогрев: инициатор${newEnabled ? ' (вкл.)' : ' (выкл.)'}`;
+            const acc = allAccounts.find(a => a.account_id === accId);
+            if (acc) acc.warmup_initiator = newEnabled;
+            _syncBulkWarmupBtn();
+          } catch (e) {
+            toast(e.message, 'err');
+          } finally {
+            btn.disabled = false;
+          }
+        });
       });
 
       area.querySelectorAll('[data-spamban]').forEach(btn => {
