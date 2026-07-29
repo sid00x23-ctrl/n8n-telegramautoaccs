@@ -194,16 +194,6 @@ class AccountManager:
         # account_id → сообщение об ошибке прокси (None = OK)
         self._proxy_errors: dict[str, str] = {}
 
-        # Глобальная очередь приветствий (rate-limited отправки)
-        self._greeting_queue: asyncio.Queue = asyncio.Queue()
-        self._greeting_worker_task: Optional[asyncio.Task] = None
-        self._last_greeting_time: float = 0.0
-        self._greeting_interval: float = 180.0  # секунд между приветствиями
-
-        # Глобальная очередь прогрева (warmup-отправки, 30-70 сек между сообщениями)
-        self._warmup_queue: asyncio.Queue = asyncio.Queue()
-        self._warmup_worker_task: Optional[asyncio.Task] = None
-
         self.proxy_pool: Optional[ProxyPool] = proxy_pool
         self._load_configs()
         self._load_sent_chats()
@@ -285,16 +275,10 @@ class AccountManager:
         await asyncio.gather(*[_connect_one(aid, cfg) for aid, cfg in self.configs.items()])
         if self.proxy_pool:
             await self.proxy_pool.start_monitor()
-        self._greeting_worker_task = asyncio.create_task(self._greeting_worker())
-        self._warmup_worker_task = asyncio.create_task(self._warmup_worker())
 
     async def stop_all(self):
         if self.proxy_pool:
             await self.proxy_pool.stop_monitor()
-        if self._greeting_worker_task:
-            self._greeting_worker_task.cancel()
-        if self._warmup_worker_task:
-            self._warmup_worker_task.cancel()
         for account_id, client in list(self.clients.items()):
             try:
                 await client.disconnect()
@@ -685,57 +669,10 @@ class AccountManager:
         }
 
     # ------------------------------------------------------------------ #
-    #  Воркер очереди приветствий                                         #
-    # ------------------------------------------------------------------ #
-
-    async def _greeting_worker(self):
-        """Фоновый воркер: отправляет приветствия по одному, раз в минуту."""
-        logger.info("Greeting worker запущен")
-        while True:
-            account_id, chat_id, text, username = await self._greeting_queue.get()
-            try:
-                now = asyncio.get_event_loop().time()
-                wait = self._greeting_interval - (now - self._last_greeting_time)
-                if wait > 0:
-                    logger.info(f"[greeting_worker] ждём {wait:.1f} сек перед отправкой {account_id} → {chat_id}")
-                    await asyncio.sleep(wait)
-                self._last_greeting_time = asyncio.get_event_loop().time()
-                await self.send_message(account_id, chat_id, text, username, rate_limited=False)
-                logger.info(f"[greeting_worker] приветствие отправлено: {account_id} → {chat_id}")
-            except Exception as e:
-                logger.error(f"[greeting_worker] ошибка отправки {account_id} → {chat_id}: {e}")
-            finally:
-                self._greeting_queue.task_done()
-
-    # ------------------------------------------------------------------ #
-    #  Воркер очереди прогрева                                            #
-    # ------------------------------------------------------------------ #
-
-    async def _warmup_worker(self):
-        """Фоновый воркер: отправляет прогревочные ответы по одному, раз в 20-25 сек."""
-        logger.info("Warmup worker запущен")
-        next_send_at: float = 0.0
-        while True:
-            account_id, chat_id, text, username = await self._warmup_queue.get()
-            try:
-                now = asyncio.get_event_loop().time()
-                wait = next_send_at - now
-                if wait > 0:
-                    logger.info(f"[warmup_worker] ждём {wait:.1f} сек перед отправкой {account_id} → {chat_id}")
-                    await asyncio.sleep(wait)
-                await self.send_message(account_id, chat_id, text, username, rate_limited=False)
-                next_send_at = asyncio.get_event_loop().time() + random.uniform(30.0, 70.0)
-                logger.info(f"[warmup_worker] отправлено: {account_id} → {chat_id}, следующее не раньше чем через {next_send_at - asyncio.get_event_loop().time():.1f} сек")
-            except Exception as e:
-                logger.error(f"[warmup_worker] ошибка отправки {account_id} → {chat_id}: {e}")
-            finally:
-                self._warmup_queue.task_done()
-
-    # ------------------------------------------------------------------ #
     #  Отправка сообщения                                                  #
     # ------------------------------------------------------------------ #
 
-    async def send_message(self, account_id: str, chat_id: int, text: str, username: Optional[str] = None, rate_limited: bool = False, instant: bool = False, warmup: bool = False) -> dict:
+    async def send_message(self, account_id: str, chat_id: int, text: str, username: Optional[str] = None, rate_limited: bool = False, instant: bool = False) -> dict:
         if account_id not in self.clients:
             raise ValueError(f"Аккаунт '{account_id}' не найден. Список: {list(self.clients.keys())}")
 
@@ -785,16 +722,6 @@ class AccountManager:
                     f"Аккаунт '{account_id}' ограничен спам-баном до {cfg.banned_until.isoformat()} "
                     f"(осталось {int(remaining.total_seconds() // 3600)}ч {int((remaining.total_seconds() % 3600) // 60)}мин)"
                 )
-
-        if rate_limited:
-            await self._greeting_queue.put((account_id, chat_id, text, username))
-            logger.info(f"[{account_id}] поставлено в очередь приветствий (в очереди: {self._greeting_queue.qsize()})")
-            return {"status": "queued", "account_id": account_id, "chat_id": chat_id}
-
-        if warmup:
-            await self._warmup_queue.put((account_id, chat_id, text, username))
-            logger.info(f"[{account_id}] поставлено в очередь прогрева (в очереди: {self._warmup_queue.qsize()})")
-            return {"status": "queued", "account_id": account_id, "chat_id": chat_id}
 
         # Заменяем длинные тире на короткие
         text = text.replace('—', '-').replace('–', '-')

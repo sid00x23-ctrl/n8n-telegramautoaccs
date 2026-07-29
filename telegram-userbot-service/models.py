@@ -8,9 +8,8 @@ class SendMessageRequest(BaseModel):
     chat_id: int          # числовой Telegram ID получателя
     text: str
     username: Optional[str] = None  # @username для первичного резолва entity
-    rate_limited: bool = False      # если True — ждёт глобальную очередь (1 сообщение/мин)
+    rate_limited: bool = False      # если True — проверяет спам-бан перед отправкой
     instant: bool = False           # если True — пропускает паузу и typing, шлёт сразу
-    warmup: bool = False            # если True — ждёт прогревочную очередь (30-70 сек между отправками)
 
 
 class AuthStartRequest(BaseModel):

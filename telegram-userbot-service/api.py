@@ -37,7 +37,7 @@ def create_app(manager: AccountManager, proxy_pool=None) -> FastAPI:
         Body: {"account_id": "account1", "chat_id": 123456789, "text": "Привет!"}
         """
         try:
-            return await manager.send_message(body.account_id, body.chat_id, body.text, body.username, body.rate_limited, body.instant, body.warmup)
+            return await manager.send_message(body.account_id, body.chat_id, body.text, body.username, body.rate_limited, body.instant)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
