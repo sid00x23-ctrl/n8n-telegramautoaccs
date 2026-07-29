@@ -348,7 +348,7 @@ class AccountManager:
             sender = await event.get_sender()
             payload = {
                 "account_id": account_id,
-                "chat_id": event.chat_id,
+                "user_id": event.chat_id,
                 "message_id": event.message.id,
                 "from_user_id": sender.id if sender else None,
                 "from_username": getattr(sender, "username", None),
@@ -380,7 +380,7 @@ class AccountManager:
             async with httpx.AsyncClient(timeout=30) as http:
                 resp = await http.post(settings.N8N_WEBHOOK_URL, json=payload)
                 resp.raise_for_status()
-                logger.debug(f"[{account_id}] Сообщение переслано в n8n: chat_id={payload['chat_id']}")
+                logger.debug(f"[{account_id}] Сообщение переслано в n8n: user_id={payload['user_id']}")
         except httpx.HTTPStatusError as e:
             logger.error(f"[{account_id}] n8n вернул ошибку {e.response.status_code}: {e.response.text}")
         except Exception as e:
