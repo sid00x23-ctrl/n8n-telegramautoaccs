@@ -274,6 +274,7 @@ class AccountManager:
 
         await asyncio.gather(*[_connect_one(aid, cfg) for aid, cfg in self.configs.items()])
         if self.proxy_pool:
+            self.proxy_pool.set_reconnect_callback(self._reconnect_to_proxy)
             await self.proxy_pool.start_monitor()
 
     async def stop_all(self):
@@ -855,6 +856,26 @@ class AccountManager:
     # ------------------------------------------------------------------ #
     #  Настройки превью ссылок                                             #
     # ------------------------------------------------------------------ #
+
+    async def _reconnect_to_proxy(self, account_id: str, new_proxy_url: str):
+        """
+        Callback для proxy monitor: переподключает аккаунт через новый прокси.
+        Вызывается при падении прокси и при балансировке нагрузки.
+        """
+        cfg = self.configs.get(account_id)
+        if not cfg:
+            logger.warning(f"[{account_id}] _reconnect_to_proxy: аккаунт не найден в конфигах")
+            return
+        cfg.proxy = new_proxy_url
+        self._save_configs()
+        existing = self.clients.get(account_id)
+        if existing:
+            try:
+                await existing.disconnect()
+            except Exception:
+                pass
+        await self._connect_client(account_id, cfg.phone)
+        logger.info(f"[{account_id}] Переподключён через новый прокси")
 
     async def _ensure_proxy(self, account_id: str):
         """

@@ -29,7 +29,12 @@ class ProxyPool:
         self.proxies: list[dict] = []
         self.settings: dict = dict(_DEFAULT_SETTINGS)
         self._monitor_task: Optional[asyncio.Task] = None
+        self._reconnect_callback = None  # async (account_id, new_proxy_url) -> None
         self._load()
+
+    def set_reconnect_callback(self, callback):
+        """Регистрирует callback для переподключения аккаунта на новый прокси."""
+        self._reconnect_callback = callback
 
     # ------------------------------------------------------------------ #
     #  Персистентность                                                      #
@@ -368,6 +373,59 @@ class ProxyPool:
     #  Фоновый мониторинг                                                   #
     # ------------------------------------------------------------------ #
 
+    async def _rebalance(self):
+        """
+        Балансирует нагрузку: перераспределяет аккаунты по рабочим прокси
+        так, чтобы разница между самым загруженным и самым незагруженным
+        не превышала 1 аккаунта. Переподключает перемещённые аккаунты.
+        """
+        ok = [p for p in self.proxies if p["status"] == "ok"]
+        if len(ok) < 2:
+            return
+
+        total = sum(len(p.get("assigned_accounts", [])) for p in ok)
+        if total == 0:
+            return
+
+        target_max = (total + len(ok) - 1) // len(ok)  # ceil(total / n)
+
+        moved_any = False
+        # Итерируемся пока есть перегруженные
+        for _ in range(total):
+            overloaded = [p for p in ok if len(p.get("assigned_accounts", [])) > target_max]
+            if not overloaded:
+                break
+            underloaded = sorted(
+                [p for p in ok if len(p.get("assigned_accounts", [])) < target_max],
+                key=lambda p: len(p.get("assigned_accounts", [])),
+            )
+            if not underloaded:
+                break
+
+            over = overloaded[0]
+            under = underloaded[0]
+            account_id = over["assigned_accounts"][0]
+
+            over["assigned_accounts"].remove(account_id)
+            under.setdefault("assigned_accounts", [])
+            if account_id not in under["assigned_accounts"]:
+                under["assigned_accounts"].append(account_id)
+            moved_any = True
+
+            if self._reconnect_callback:
+                try:
+                    await self._reconnect_callback(account_id, under["url"])
+                    logger.info(
+                        f"[rebalance] {account_id}: "
+                        f"{over['id'][:8]}... → {under['id'][:8]}..."
+                    )
+                except Exception as e:
+                    logger.error(f"[rebalance] {account_id}: ошибка переподключения: {e}")
+
+        if moved_any:
+            self._save()
+            logger.info("[rebalance] Балансировка завершена")
+
     async def _monitor_loop(self):
         logger.info("Proxy monitor запущен")
         while True:
@@ -378,13 +436,41 @@ class ProxyPool:
             logger.info(f"[proxy_monitor] Проверка {len(self.proxies)} прокси...")
             tasks = [self._check_one_safe(p["id"]) for p in list(self.proxies)]
             await asyncio.gather(*tasks)
+            await self._rebalance()
             logger.info("[proxy_monitor] Готово")
 
     async def _check_one_safe(self, proxy_id: str):
+        proxy = next((p for p in self.proxies if p["id"] == proxy_id), None)
+        if not proxy:
+            return
+        was_ok = proxy.get("status") == "ok"
+        accounts_snapshot = list(proxy.get("assigned_accounts", []))
         try:
             await self.check_proxy(proxy_id)
         except Exception as e:
             logger.error(f"[proxy_monitor] Ошибка при проверке {proxy_id}: {e}")
+            return
+
+        now_error = proxy.get("status") == "error"
+        if was_ok and now_error and accounts_snapshot and self._reconnect_callback:
+            logger.warning(
+                f"[proxy_monitor] Прокси {proxy_id[:8]}... упал, "
+                f"переключаем {len(accounts_snapshot)} аккаунт(ов)..."
+            )
+            for account_id in accounts_snapshot:
+                new_proxy = self.get_best_proxy(exclude_ids={proxy_id})
+                if new_proxy:
+                    self.assign_proxy_to_account(account_id, proxy_id=new_proxy["id"])
+                    try:
+                        await self._reconnect_callback(account_id, new_proxy["url"])
+                        logger.info(
+                            f"[proxy_monitor] {account_id}: "
+                            f"{proxy_id[:8]}... → {new_proxy['id'][:8]}..."
+                        )
+                    except Exception as e:
+                        logger.error(f"[proxy_monitor] {account_id}: ошибка переключения: {e}")
+                else:
+                    logger.warning(f"[proxy_monitor] {account_id}: нет рабочих прокси для переключения")
 
     async def start_monitor(self):
         self._monitor_task = asyncio.create_task(self._monitor_loop())
