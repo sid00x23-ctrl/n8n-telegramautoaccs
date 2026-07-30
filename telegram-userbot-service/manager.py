@@ -316,12 +316,12 @@ class AccountManager:
         self.clients[account_id] = client
 
         try:
-            await client.connect()
-            is_auth = await client.is_user_authorized()
+            await asyncio.wait_for(client.connect(), timeout=30)
+            is_auth = await asyncio.wait_for(client.is_user_authorized(), timeout=15)
             self.authorized[account_id] = is_auth
 
             if is_auth:
-                me: Optional[User] = await client.get_me()
+                me: Optional[User] = await asyncio.wait_for(client.get_me(), timeout=15)
                 # Обновляем tg_id/имя/username в конфиге
                 if account_id in self.configs:
                     self.configs[account_id].tg_id = me.id
@@ -332,6 +332,8 @@ class AccountManager:
                 self._register_incoming_handler(client, account_id)
             else:
                 logger.warning(f"Аккаунт {account_id} не авторизован")
+        except asyncio.TimeoutError as e:
+            logger.error(f"Не удалось подключить {account_id}: таймаут подключения (прокси завис?)")
         except Exception as e:
             logger.error(f"Не удалось подключить {account_id}: {e}")
 
@@ -733,13 +735,15 @@ class AccountManager:
             clean_username = (username or "").strip().lstrip("@")
             if clean_username:
                 try:
-                    entity = await client.get_entity(clean_username)
+                    entity = await asyncio.wait_for(client.get_entity(clean_username), timeout=30)
                     logger.info(f"[{account_id}] Entity резолвнута по username @{clean_username} → id={entity.id}")
+                except asyncio.TimeoutError:
+                    logger.warning(f"[{account_id}] Таймаут при резолве @{clean_username}. Пробуем по chat_id.")
                 except Exception as e:
                     logger.warning(f"[{account_id}] Не удалось резолвить @{clean_username}: {e}. Пробуем по chat_id.")
 
             if entity is None:
-                entity = await client.get_entity(PeerUser(chat_id))
+                entity = await asyncio.wait_for(client.get_entity(PeerUser(chat_id)), timeout=30)
 
             if not instant:
                 # 1. Отмечаем сообщение прочитанным
@@ -766,7 +770,7 @@ class AccountManager:
             # 4. Отправляем
             cfg = self.configs.get(account_id)
             link_preview = not (cfg.link_preview_disabled if cfg else False)
-            await client.send_message(entity, text, link_preview=link_preview)
+            await asyncio.wait_for(client.send_message(entity, text, link_preview=link_preview), timeout=60)
             await self._send_delivery_callback("sent", account_id, chat_id)
             self._sent_chats.setdefault(account_id, set()).add(chat_id)
             self._save_sent_chats()

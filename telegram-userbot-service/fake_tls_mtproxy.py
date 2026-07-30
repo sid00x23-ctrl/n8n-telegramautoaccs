@@ -26,6 +26,26 @@ _MAX_RECORD = 4096
 _DEFAULT_DOMAIN = "www.google.com"
 
 
+def _extract_domain_from_secret(raw_secret: str) -> str:
+    """
+    Извлекает SNI-домен, встроенный в расширенный MTProxy секрет.
+
+    Формат: [ee|dd]<32 hex-символа ключа><hex-encoded ASCII домен>
+    Если домен не встроен (секрет ровно 16 байт после ключа) — возвращает "".
+    """
+    s = raw_secret
+    if s[:2].lower() in ("ee", "dd"):
+        s = s[2:]
+    try:
+        decoded = bytes.fromhex(s)
+        domain_bytes = decoded[16:]
+        if domain_bytes:
+            return domain_bytes.decode("ascii", errors="ignore")
+    except ValueError:
+        pass  # base64-формат — домен не встроен
+    return ""
+
+
 # ------------------------------------------------------------------ #
 #  Fake-TLS ClientHello                                               #
 # ------------------------------------------------------------------ #
@@ -169,17 +189,27 @@ class ConnectionTcpMTProxyFakeTLS(TcpMTProxy):
     packet_codec = RandomizedIntermediatePacketCodec
 
     def __init__(self, ip, port, dc_id, *, loggers, proxy=None, local_addr=None):
+        # Извлекаем домен из сырого секрета ДО вызова super().__init__(),
+        # потому что TcpMTProxy.normalize_secret() отрезает домен, оставляя только ключ.
+        raw_secret = proxy[2] if proxy else ""
+        embedded_domain = _extract_domain_from_secret(raw_secret)
         super().__init__(ip, port, dc_id, loggers=loggers, proxy=proxy, local_addr=local_addr)
-        self._tls_domain = _DEFAULT_DOMAIN  # используем дефолтный SNI
+        self._tls_domain = embedded_domain if embedded_domain else _DEFAULT_DOMAIN
 
     async def _connect(self, timeout=None, ssl=None):
         # Шаг 1: чистое TCP соединение (минуя ObfuscatedConnection._connect)
         from telethon.network.connection.connection import Connection
         await Connection._connect(self, timeout=timeout, ssl=ssl)
 
-        # Шаг 2: fake-TLS хэндшейк (использует self._secret из TcpMTProxy.__init__)
+        # Шаг 2: fake-TLS хэндшейк.
+        # HMAC вычисляется только по 16-байтовому ключу (без байта-префикса 0xEE/0xDD).
+        hmac_key = (
+            self._secret[1:]
+            if len(self._secret) > 16 and self._secret[0] in (0xDD, 0xEE)
+            else self._secret
+        )
         await _do_fake_tls_handshake(
-            self._reader, self._writer, self._secret, self._tls_domain
+            self._reader, self._writer, hmac_key, self._tls_domain
         )
 
         # Шаг 3: оборачиваем I/O в TLS ApplicationData
