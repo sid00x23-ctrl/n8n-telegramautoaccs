@@ -1258,6 +1258,14 @@ class AccountManager:
             entity = chat_id
         await client.send_read_acknowledge(entity)
 
+    def find_account_by_username(self, username: str) -> Optional[str]:
+        """Найти account_id по Telegram @username аккаунта-отправителя."""
+        clean = username.strip().lstrip("@").lower()
+        for account_id, cfg in self.configs.items():
+            if cfg.username and cfg.username.lower() == clean:
+                return account_id
+        return None
+
     def get_status(self) -> list[dict]:
         result = []
         now = datetime.now(timezone.utc)

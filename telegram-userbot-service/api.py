@@ -35,9 +35,28 @@ def create_app(manager: AccountManager, proxy_pool=None) -> FastAPI:
         Вызывается нодами n8n.
 
         Body: {"account_id": "account1", "chat_id": 123456789, "text": "Привет!"}
+
+        Альтернативно:
+        - partner_id: @username аккаунта-отправителя (вместо account_id)
+        - lastsender_id: @username получателя (вместо username/chat_id для резолва entity)
         """
         try:
-            return await manager.send_message(body.account_id, body.chat_id, body.text, body.username, body.rate_limited, body.instant)
+            # Определяем account_id: явный приоритет над partner_id
+            account_id = body.account_id
+            if not account_id:
+                if not body.partner_id:
+                    raise HTTPException(status_code=400, detail="Необходимо указать account_id или partner_id")
+                clean_partner = body.partner_id.strip().lstrip("@")
+                account_id = manager.find_account_by_username(clean_partner)
+                if not account_id:
+                    raise HTTPException(status_code=404, detail=f"Аккаунт с никнеймом @{clean_partner} не найден")
+
+            # Определяем username для резолва получателя: lastsender_id имеет приоритет над username
+            username = body.lastsender_id or body.username
+
+            return await manager.send_message(account_id, body.chat_id, body.text, username, body.rate_limited, body.instant)
+        except HTTPException:
+            raise
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 

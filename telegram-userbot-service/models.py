@@ -4,12 +4,14 @@ from typing import Optional
 
 
 class SendMessageRequest(BaseModel):
-    account_id: str
-    chat_id: int          # числовой Telegram ID получателя
+    account_id: Optional[str] = None  # внутренний ID аккаунта-отправителя (или partner_id для поиска по никнейму)
+    chat_id: int                       # числовой Telegram ID получателя
     text: str
-    username: Optional[str] = None  # @username для первичного резолва entity
-    rate_limited: bool = False      # если True — проверяет спам-бан перед отправкой
-    instant: bool = False           # если True — пропускает паузу и typing, шлёт сразу
+    username: Optional[str] = None    # @username для первичного резолва entity получателя
+    rate_limited: bool = False         # если True — проверяет спам-бан перед отправкой
+    instant: bool = False             # если True — пропускает паузу и typing, шлёт сразу
+    partner_id: Optional[str] = None  # @username аккаунта-отправителя (альтернатива account_id)
+    lastsender_id: Optional[str] = None  # @username получателя (альтернатива username + chat_id резолв)
 
 
 class AuthStartRequest(BaseModel):
