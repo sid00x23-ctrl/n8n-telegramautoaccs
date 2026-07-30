@@ -675,7 +675,7 @@ class AccountManager:
     #  Отправка сообщения                                                  #
     # ------------------------------------------------------------------ #
 
-    async def send_message(self, account_id: str, chat_id: int, text: str, username: Optional[str] = None, rate_limited: bool = False, instant: bool = False) -> dict:
+    async def send_message(self, account_id: str, chat_id: Optional[int], text: str, username: Optional[str] = None, rate_limited: bool = False, instant: bool = False) -> dict:
         if account_id not in self.clients:
             raise ValueError(f"Аккаунт '{account_id}' не найден. Список: {list(self.clients.keys())}")
 
@@ -744,6 +744,8 @@ class AccountManager:
                     logger.warning(f"[{account_id}] Не удалось резолвить @{clean_username}: {e}. Пробуем по chat_id.")
 
             if entity is None:
+                if chat_id is None:
+                    raise ValueError("Необходимо указать chat_id или username/lastsender_id для определения получателя")
                 entity = await asyncio.wait_for(client.get_entity(PeerUser(chat_id)), timeout=30)
 
             if not instant:

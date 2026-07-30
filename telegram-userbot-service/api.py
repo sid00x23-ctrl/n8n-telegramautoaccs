@@ -54,6 +54,9 @@ def create_app(manager: AccountManager, proxy_pool=None) -> FastAPI:
             # Определяем username для резолва получателя: lastsender_id имеет приоритет над username
             username = body.lastsender_id or body.username
 
+            if not username and body.chat_id is None:
+                raise HTTPException(status_code=400, detail="Необходимо указать chat_id или lastsender_id/username получателя")
+
             return await manager.send_message(account_id, body.chat_id, body.text, username, body.rate_limited, body.instant)
         except HTTPException:
             raise

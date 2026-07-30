@@ -5,7 +5,7 @@ from typing import Optional
 
 class SendMessageRequest(BaseModel):
     account_id: Optional[str] = None  # внутренний ID аккаунта-отправителя (или partner_id для поиска по никнейму)
-    chat_id: int                       # числовой Telegram ID получателя
+    chat_id: Optional[int] = None     # числовой Telegram ID получателя (не нужен если указан lastsender_id/@username)
     text: str
     username: Optional[str] = None    # @username для первичного резолва entity получателя
     rate_limited: bool = False         # если True — проверяет спам-бан перед отправкой
