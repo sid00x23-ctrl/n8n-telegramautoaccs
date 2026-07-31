@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Патчи для n8n 2.8.4:
+# Патчи для n8n 2.32.x:
 #   1. Разблокировка Enterprise-фич (license.js, license-state.js)
 #   2. Фикс двойного /n8n/ префикса в SPA-навигации (WorkflowsView)
 #
@@ -14,9 +14,13 @@ if [ ! -d "$N8N_DIR" ]; then
 fi
 
 echo "==> n8n dir: $N8N_DIR"
+echo "==> n8n version: $(node -e "console.log(require('$N8N_DIR/package.json').version)" 2>/dev/null || echo 'unknown')"
 
 # ---------------------------------------------------------------------------
 # 1. license.js — isLicensed, isAPIDisabled, getAiCredits, getTeamProjectLimit, getPlanName
+#
+# В 2.32.x код многострочный, поэтому патчим отдельные return-строки внутри функций.
+# Каждая строка уникальна в файле — замена безопасна.
 # ---------------------------------------------------------------------------
 LICENSE_JS="$N8N_DIR/dist/license.js"
 
@@ -26,50 +30,63 @@ import sys, pathlib
 path = pathlib.Path(sys.argv[1])
 src = path.read_text()
 
+# Каждый патч: (старая строка, новая строка)
+# Строки уникальны в файле — простая замена без regex.
 patches = [
     (
-        'isLicensed(feature) { return this.manager?.hasFeatureEnabled(feature) ?? false; }',
-        'isLicensed(feature) { return true; }'
+        "return this.manager?.hasFeatureEnabled(feature) ?? false;",
+        "return true;"
     ),
     (
-        'isAPIDisabled() { return this.isLicensed(constants_1.LICENSE_FEATURES.API_DISABLED); }',
-        'isAPIDisabled() { return false; }'
+        "return this.isLicensed(constants_1.LICENSE_FEATURES.API_DISABLED);",
+        "return false;"
     ),
     (
-        'getAiCredits() { return this.getValue(constants_1.LICENSE_QUOTAS.AI_CREDITS) ?? 0; }',
-        'getAiCredits() { return constants_1.UNLIMITED_LICENSE_QUOTA; }'
+        "return this.getValue(constants_1.LICENSE_QUOTAS.AI_CREDITS) ?? 0;",
+        "return constants_1.UNLIMITED_LICENSE_QUOTA;"
     ),
     (
-        'getTeamProjectLimit() { return this.getValue(constants_1.LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0; }',
-        'getTeamProjectLimit() { return constants_1.UNLIMITED_LICENSE_QUOTA; }'
+        "return this.getValue(constants_1.LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0;",
+        "return constants_1.UNLIMITED_LICENSE_QUOTA;"
     ),
     (
-        "getPlanName() { return this.getValue('planName') ?? 'Community'; }",
-        "getPlanName() { return 'Enterprise'; }"
+        "return this.getValue('planName') ?? 'Community';",
+        "return 'Enterprise';"
     ),
 ]
 
 changed = False
 for old, new in patches:
     if old in src:
-        src = src.replace(old, new)
-        changed = True
-        print(f'  patched: {old[:60]}...')
+        # Сохраняем отступ оригинальной строки
+        lines = src.split('\n')
+        for i, line in enumerate(lines):
+            if old in line:
+                indent = line[:len(line) - len(line.lstrip())]
+                lines[i] = indent + new
+                changed = True
+                print(f'  patched: {old[:70]}')
+                break
+        src = '\n'.join(lines)
     elif new in src:
-        print(f'  already patched: {new[:60]}...')
+        print(f'  already patched: {new[:70]}')
     else:
-        print(f'  WARNING: pattern not found: {old[:60]}...')
+        print(f'  WARNING: pattern not found: {old[:70]}')
 
 if changed:
-    path.with_suffix('.js.bak').write_text(path.read_bytes().decode('utf-8', errors='replace'))
+    path.with_suffix('.js.bak').write_text(path.read_text() if path.with_suffix('.js.bak').exists() else '')
     path.write_text(src)
     print(f'  saved: {path}')
 PYEOF
 
 # ---------------------------------------------------------------------------
-# 2. license-state.js — LicenseState quotas
+# 2. license-state.js — аналогичные патчи для @n8n/backend-common
 # ---------------------------------------------------------------------------
 LICENSE_STATE_JS="$N8N_DIR/node_modules/@n8n/backend-common/dist/license-state.js"
+
+if [ ! -f "$LICENSE_STATE_JS" ]; then
+  echo "  WARNING: license-state.js not found at $LICENSE_STATE_JS, skipping"
+else
 
 python3 - "$LICENSE_STATE_JS" << 'PYEOF'
 import sys, pathlib
@@ -79,79 +96,79 @@ src = path.read_text()
 
 patches = [
     (
-        "isAPIDisabled() { return this.isLicensed('feat:apiDisabled'); }",
-        "isAPIDisabled() { return false; }"
+        "return this.isLicensed('feat:apiDisabled');",
+        "return false;"
     ),
     (
-        "getMaxTeamProjects() { return this.getValue('quota:maxTeamProjects') ?? 0; }",
-        "getMaxTeamProjects() { return constants_1.UNLIMITED_LICENSE_QUOTA; }"
+        "return this.getValue('quota:maxTeamProjects') ?? 0;",
+        "return constants_1.UNLIMITED_LICENSE_QUOTA;"
     ),
     (
-        "getMaxAiCredits() { return this.getValue('quota:aiCredits') ?? 0; }",
-        "getMaxAiCredits() { return constants_1.UNLIMITED_LICENSE_QUOTA; }"
+        "return this.getValue('quota:aiCredits') ?? 0;",
+        "return constants_1.UNLIMITED_LICENSE_QUOTA;"
     ),
     (
-        "getMaxWorkflowsWithEvaluations() { return this.getValue('quota:evaluations:maxWorkflows') ?? 0; }",
-        "getMaxWorkflowsWithEvaluations() { return constants_1.UNLIMITED_LICENSE_QUOTA; }"
+        "return this.getValue('quota:evaluations:maxWorkflows') ?? 0;",
+        "return constants_1.UNLIMITED_LICENSE_QUOTA;"
     ),
     (
-        "getInsightsMaxHistory() { return this.getValue('quota:insights:maxHistoryDays') ?? 7; }",
-        "getInsightsMaxHistory() { return 365; }"
+        "return this.getValue('quota:insights:maxHistoryDays') ?? 7;",
+        "return 365;"
     ),
 ]
 
 changed = False
 for old, new in patches:
     if old in src:
-        src = src.replace(old, new)
-        changed = True
-        print(f'  patched: {old[:60]}...')
+        lines = src.split('\n')
+        for i, line in enumerate(lines):
+            if old in line:
+                indent = line[:len(line) - len(line.lstrip())]
+                lines[i] = indent + new
+                changed = True
+                print(f'  patched: {old[:70]}')
+                break
+        src = '\n'.join(lines)
     elif new in src:
-        print(f'  already patched: {new[:60]}...')
+        print(f'  already patched: {new[:70]}')
     else:
-        print(f'  WARNING: pattern not found: {old[:60]}...')
+        print(f'  WARNING: pattern not found: {old[:70]}')
 
 if changed:
-    path.with_suffix('.js.bak').write_text(path.read_bytes().decode('utf-8', errors='replace'))
     path.write_text(src)
     print(f'  saved: {path}')
 PYEOF
+
+fi
 
 # ---------------------------------------------------------------------------
 # 3. WorkflowsView — router.resolve().href → .fullPath (фикс двойного /n8n/)
 # ---------------------------------------------------------------------------
 WORKFLOWS_VIEW=$(find "$N8N_DIR/node_modules/n8n-editor-ui/dist/assets" \
-  -name 'WorkflowsView-*.js' ! -name '*.bak' 2>/dev/null | head -1)
+  -name 'WorkflowsView-*.js' ! -name '*-legacy-*' ! -name '*.bak' 2>/dev/null | head -1)
 
 if [ -z "$WORKFLOWS_VIEW" ]; then
   echo "  WARNING: WorkflowsView-*.js not found, skipping"
 else
   python3 - "$WORKFLOWS_VIEW" << 'PYEOF'
-import sys, pathlib, re
+import sys, pathlib
 
 path = pathlib.Path(sys.argv[1])
 src = path.read_text()
 
-# getFolderUrl возвращал .href (включает base /n8n), что дублировало префикс
-# при router.push() и RouterLink to=...
-# Заменяем .href → .fullPath для всех router.resolve() в этом файле,
-# кроме window.open (там нужен полный путь).
+count_semi = src.count('}).href;')
 
-count_semi  = src.count('}).href;')   # присвоения переменным
-count_nl    = src.count('}).href\n')  # свойства объектов (breadcrumbs)
-
-if count_semi == 0 and count_nl == 0:
-    # Проверяем, не пропатчен ли уже
-    if '}).fullPath;' in src or '}).fullPath\n' in src:
+if count_semi == 0:
+    if '}).fullPath;' in src:
         print(f'  already patched: {path.name}')
     else:
-        print(f'  WARNING: patterns not found in {path.name}')
+        print(f'  WARNING: pattern }).href; not found in {path.name}')
     sys.exit(0)
 
-new_src = src.replace('}).href;', '}).fullPath;').replace('}).href\n', '}).fullPath\n')
+new_src = src.replace('}).href;', '}).fullPath;')
 path.with_suffix('.js.bak').write_text(src)
 path.write_text(new_src)
-print(f'  patched {count_semi} variable assignments + {count_nl} object properties in {path.name}')
+print(f'  patched {count_semi} occurrences of .href -> .fullPath in {path.name}')
 PYEOF
 fi
 
