@@ -738,8 +738,8 @@ class AccountManager:
                 try:
                     entity = await asyncio.wait_for(client.get_entity(clean_username), timeout=30)
                     logger.info(f"[{account_id}] Entity резолвнута по username @{clean_username} → id={entity.id}")
-                except asyncio.TimeoutError:
-                    logger.warning(f"[{account_id}] Таймаут при резолве @{clean_username} — перебираем рабочие прокси...")
+                except (asyncio.TimeoutError, ConnectionError) as e:
+                    logger.warning(f"[{account_id}] Ошибка соединения при резолве @{clean_username}: {e} — перебираем рабочие прокси...")
                     cfg_fo = self.configs.get(account_id)
                     if self.proxy_pool and cfg_fo:
                         tried_proxy_ids: set = set()
@@ -765,8 +765,8 @@ class AccountManager:
                             try:
                                 entity = await asyncio.wait_for(client.get_entity(clean_username), timeout=30)
                                 logger.info(f"[{account_id}] Entity резолвнута через прокси {next_proxy['id'][:8]} @{clean_username} → id={entity.id}")
-                            except asyncio.TimeoutError:
-                                logger.warning(f"[{account_id}] Прокси {next_proxy['id'][:8]} тоже завис, пробуем следующий...")
+                            except (asyncio.TimeoutError, ConnectionError) as retry_e:
+                                logger.warning(f"[{account_id}] Прокси {next_proxy['id'][:8]} ошибка соединения: {retry_e}, пробуем следующий...")
                                 tried_proxy_ids.add(next_proxy["id"])
                             except Exception as retry_e:
                                 logger.warning(f"[{account_id}] Прокси {next_proxy['id'][:8]} ошибка резолва: {retry_e}, пробуем следующий...")
