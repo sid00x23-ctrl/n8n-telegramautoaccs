@@ -162,13 +162,13 @@ if count_semi == 0:
     if '}).fullPath;' in src:
         print(f'  already patched: {path.name}')
     else:
-        print(f'  WARNING: pattern }).href; not found in {path.name}')
+        print(f'  WARNING: pattern ]).href; not found in ' + path.name)
     sys.exit(0)
 
 new_src = src.replace('}).href;', '}).fullPath;')
 path.with_suffix('.js.bak').write_text(src)
 path.write_text(new_src)
-print(f'  patched {count_semi} occurrences of .href -> .fullPath in {path.name}')
+print('  patched ' + str(count_semi) + ' occurrences of .href -> .fullPath in ' + path.name)
 PYEOF
 fi
 
