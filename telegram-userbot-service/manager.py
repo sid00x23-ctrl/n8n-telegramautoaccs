@@ -739,17 +739,20 @@ class AccountManager:
                     entity = await asyncio.wait_for(client.get_entity(clean_username), timeout=30)
                     logger.info(f"[{account_id}] Entity резолвнута по username @{clean_username} → id={entity.id}")
                 except asyncio.TimeoutError:
-                    logger.warning(f"[{account_id}] Таймаут при резолве @{clean_username} — пробуем failover прокси...")
+                    logger.warning(f"[{account_id}] Таймаут при резолве @{clean_username} — перебираем рабочие прокси...")
                     cfg_fo = self.configs.get(account_id)
                     if self.proxy_pool and cfg_fo:
+                        tried_proxy_ids: set = set()
                         cur_proxy = self.proxy_pool.get_account_proxy(account_id)
-                        proxy_id_to_exclude = cur_proxy["id"] if cur_proxy else None
-                        new_proxy = (
-                            await self.proxy_pool.failover(account_id, proxy_id_to_exclude)
-                            if proxy_id_to_exclude else await self.proxy_pool.get_best_proxy()
-                        )
-                        if new_proxy:
-                            cfg_fo.proxy = new_proxy["url"]
+                        if cur_proxy:
+                            tried_proxy_ids.add(cur_proxy["id"])
+                        while entity is None:
+                            next_proxy = self.proxy_pool.get_best_proxy(exclude_ids=tried_proxy_ids)
+                            if not next_proxy:
+                                logger.warning(f"[{account_id}] Все рабочие прокси перебраны, entity не резолвилась. Пробуем по chat_id.")
+                                break
+                            logger.info(f"[{account_id}] Переключаемся на прокси {next_proxy['id'][:8]}...")
+                            cfg_fo.proxy = next_proxy["url"]
                             self._save_configs()
                             existing = self.clients.get(account_id)
                             if existing:
@@ -761,11 +764,13 @@ class AccountManager:
                             client = self.clients[account_id]
                             try:
                                 entity = await asyncio.wait_for(client.get_entity(clean_username), timeout=30)
-                                logger.info(f"[{account_id}] Entity резолвнута после failover @{clean_username} → id={entity.id}")
+                                logger.info(f"[{account_id}] Entity резолвнута через прокси {next_proxy['id'][:8]} @{clean_username} → id={entity.id}")
+                            except asyncio.TimeoutError:
+                                logger.warning(f"[{account_id}] Прокси {next_proxy['id'][:8]} тоже завис, пробуем следующий...")
+                                tried_proxy_ids.add(next_proxy["id"])
                             except Exception as retry_e:
-                                logger.warning(f"[{account_id}] Не удалось резолвить @{clean_username} после failover: {retry_e}. Пробуем по chat_id.")
-                        else:
-                            logger.warning(f"[{account_id}] Нет доступных прокси для failover. Пробуем по chat_id.")
+                                logger.warning(f"[{account_id}] Прокси {next_proxy['id'][:8]} ошибка резолва: {retry_e}, пробуем следующий...")
+                                tried_proxy_ids.add(next_proxy["id"])
                     else:
                         logger.warning(f"[{account_id}] Proxy pool недоступен. Пробуем по chat_id.")
                 except Exception as e:
