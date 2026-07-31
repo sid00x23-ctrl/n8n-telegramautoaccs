@@ -143,33 +143,42 @@ fi
 
 # ---------------------------------------------------------------------------
 # 3. WorkflowsView — router.resolve().href → .fullPath (фикс двойного /n8n/)
+#
+# В минифицированном коде встречаются все варианты: }).href; }).href, }).href} ).href)
+# Заменяем ВСЕ }).href (за исключением строк с window.open — там нужен полный путь).
+# Патчим основной файл и legacy-вариант.
 # ---------------------------------------------------------------------------
-WORKFLOWS_VIEW=$(find "$N8N_DIR/node_modules/n8n-editor-ui/dist/assets" \
-  -name 'WorkflowsView-*.js' ! -name '*-legacy-*' ! -name '*.bak' 2>/dev/null | head -1)
 
-if [ -z "$WORKFLOWS_VIEW" ]; then
-  echo "  WARNING: WorkflowsView-*.js not found, skipping"
-else
-  python3 - "$WORKFLOWS_VIEW" << 'PYEOF'
-import sys, pathlib
+patch_workflows_view() {
+  local file="$1"
+  python3 - "$file" << 'PYEOF'
+import sys, pathlib, re
 
 path = pathlib.Path(sys.argv[1])
 src = path.read_text()
 
-count_semi = src.count('}).href;')
+# Считаем все вхождения }).href (кроме уже пропатченных .fullPath)
+count = len(re.findall(r'\}\)\.href(?!Path)', src))
 
-if count_semi == 0:
-    if '}).fullPath;' in src:
-        print(f'  already patched: {path.name}')
+if count == 0:
+    if '}).fullPath' in src:
+        print('  already patched: ' + path.name)
     else:
-        print(f'  WARNING: pattern ]).href; not found in ' + path.name)
+        print('  WARNING: no }).href patterns found in ' + path.name)
     sys.exit(0)
 
-new_src = src.replace('}).href;', '}).fullPath;')
+# Заменяем }).href на }).fullPath везде (минифицированный код не использует .href
+# вне router.resolve() в этих файлах)
+new_src = re.sub(r'\}\)\.href(?!Path)', '}).fullPath', src)
 path.with_suffix('.js.bak').write_text(src)
 path.write_text(new_src)
-print('  patched ' + str(count_semi) + ' occurrences of .href -> .fullPath in ' + path.name)
+print('  patched ' + str(count) + ' occurrences of .href -> .fullPath in ' + path.name)
 PYEOF
-fi
+}
+
+for wv_file in $(find "$N8N_DIR/node_modules/n8n-editor-ui/dist/assets" \
+    -name 'WorkflowsView-*.js' ! -name '*.bak' 2>/dev/null); do
+  patch_workflows_view "$wv_file"
+done
 
 echo "==> patch-n8n.sh done"
