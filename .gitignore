@@ -11,8 +11,11 @@ venv/
 .env
 *.session
 *.session-journal
-sessions/
-accounts_config.json
+client1/sessions/
+client1/n8n-data/
+client1/accounts_config.json
+client1/proxies.json
+client1/sent_chats.json
 *-api-*.json
 
 # MCP config — содержит API-ключи и локальные пути
