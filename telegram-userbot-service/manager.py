@@ -739,7 +739,35 @@ class AccountManager:
                     entity = await asyncio.wait_for(client.get_entity(clean_username), timeout=30)
                     logger.info(f"[{account_id}] Entity резолвнута по username @{clean_username} → id={entity.id}")
                 except asyncio.TimeoutError:
-                    logger.warning(f"[{account_id}] Таймаут при резолве @{clean_username}. Пробуем по chat_id.")
+                    logger.warning(f"[{account_id}] Таймаут при резолве @{clean_username} — пробуем failover прокси...")
+                    cfg_fo = self.configs.get(account_id)
+                    if self.proxy_pool and cfg_fo:
+                        cur_proxy = self.proxy_pool.get_account_proxy(account_id)
+                        proxy_id_to_exclude = cur_proxy["id"] if cur_proxy else None
+                        new_proxy = (
+                            await self.proxy_pool.failover(account_id, proxy_id_to_exclude)
+                            if proxy_id_to_exclude else await self.proxy_pool.get_best_proxy()
+                        )
+                        if new_proxy:
+                            cfg_fo.proxy = new_proxy["url"]
+                            self._save_configs()
+                            existing = self.clients.get(account_id)
+                            if existing:
+                                try:
+                                    await existing.disconnect()
+                                except Exception:
+                                    pass
+                            await self._connect_client(account_id, cfg_fo.phone)
+                            client = self.clients[account_id]
+                            try:
+                                entity = await asyncio.wait_for(client.get_entity(clean_username), timeout=30)
+                                logger.info(f"[{account_id}] Entity резолвнута после failover @{clean_username} → id={entity.id}")
+                            except Exception as retry_e:
+                                logger.warning(f"[{account_id}] Не удалось резолвить @{clean_username} после failover: {retry_e}. Пробуем по chat_id.")
+                        else:
+                            logger.warning(f"[{account_id}] Нет доступных прокси для failover. Пробуем по chat_id.")
+                    else:
+                        logger.warning(f"[{account_id}] Proxy pool недоступен. Пробуем по chat_id.")
                 except Exception as e:
                     logger.warning(f"[{account_id}] Не удалось резолвить @{clean_username}: {e}. Пробуем по chat_id.")
 
