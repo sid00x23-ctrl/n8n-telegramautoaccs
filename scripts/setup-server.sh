@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Первичная настройка нового сервера.
-# Устанавливает зависимости, создаёт venv, собирает n8n-nodes.
+# Устанавливает зависимости, клонирует репо, создаёт venv, собирает n8n-nodes.
 # Запускать от root на чистом Ubuntu/Debian.
 set -e
 
-REPO_DIR="/opt/botrassilka"
+REPO_URL="git@github.com:sid00x23-ctrl/n8n-telegramautoaccs.git"
+REPO_DIR="/home/n8n-telegramautoaccs"
 N8N_VERSION="2.32.6"
 
 echo "==> Устанавливаем системные пакеты"
@@ -33,6 +34,13 @@ NODE_OPTIONS="--max-old-space-size=512" \
   --cache /dev/shm/npm-cache \
   --prefer-offline
 rm -rf /dev/shm/npm-cache
+
+echo "==> Клонируем репозиторий"
+if [ ! -d "$REPO_DIR/.git" ]; then
+  git clone "$REPO_URL" "$REPO_DIR"
+else
+  echo "  Репо уже существует, пропускаем clone"
+fi
 
 echo "==> Патчим n8n (enterprise-фичи + фикс /n8n/ роутинга)"
 bash "$REPO_DIR/scripts/patch-n8n.sh"
@@ -63,4 +71,5 @@ pm2 startup
 
 echo ""
 echo "Готово! Сервер настроен."
-echo "Следующий шаг: создать клиента через scripts/new-client.sh"
+echo "Следующий шаг: создать клиента через:"
+echo "  bash $REPO_DIR/scripts/new-client.sh <client_id> <domain>"

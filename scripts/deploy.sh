@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
 # Деплой на сервере: git pull + перезапуск сервисов.
-# Запускать на сервере: bash /opt/botrassilka/scripts/deploy.sh
+# Запускать на сервере: bash /home/n8n-telegramautoaccs/scripts/deploy.sh
 set -e
 
-REPO_DIR="/opt/botrassilka"
+REPO_DIR="/home/n8n-telegramautoaccs"
 
 echo "==> git pull"
 cd "$REPO_DIR"
 git pull
 
-echo "==> Перезапускаем portal (с обновлением env)"
-pm2 startOrRestart /opt/clients/client1/ecosystem.config.js --only portal
-
-echo "==> Перезапускаем userbot (с обновлением env)"
-pm2 startOrRestart /opt/clients/client1/ecosystem.config.js --only userbot
+echo "==> Перезапускаем сервисы"
+pm2 startOrRestart "$REPO_DIR/ecosystem.config.js" --update-env
 
 echo ""
 echo "Готово. Статус:"
