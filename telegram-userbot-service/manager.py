@@ -1041,6 +1041,14 @@ class AccountManager:
         self._save_configs()
         return {"account_id": account_id, "warmup_initiator": cfg.warmup_initiator}
 
+    def update_warmup_receiver(self, account_id: str, enabled: bool) -> dict:
+        cfg = self.configs.get(account_id)
+        if cfg is None:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        cfg.warmup_receiver = enabled
+        self._save_configs()
+        return {"account_id": account_id, "warmup_receiver": cfg.warmup_receiver}
+
     def update_link_preview(self, account_id: str, link_preview_disabled: Optional[bool] = None) -> dict:
         cfg = self.configs.get(account_id)
         if cfg is None:
@@ -1326,6 +1334,7 @@ class AccountManager:
                 "link_preview_disabled": cfg.link_preview_disabled if cfg else False,
                 "spam_ban_auto": cfg.spam_ban_auto if cfg else True,
                 "warmup_initiator": cfg.warmup_initiator if cfg else False,
+                "warmup_receiver": cfg.warmup_receiver if cfg else False,
                 "proxy": cfg.proxy if cfg else None,
                 "proxy_type": "mtproto" if cfg and cfg.proxy and ("t.me/proxy" in cfg.proxy or cfg.proxy.startswith("tg://proxy")) else ("socks" if cfg and cfg.proxy else None),
                 "proxy_error": self._proxy_errors.get(account_id),

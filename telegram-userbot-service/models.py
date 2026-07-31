@@ -49,6 +49,7 @@ class AccountConfig(BaseModel):
     link_preview_disabled: bool = False # отключить превью ссылок в исходящих сообщениях
     spam_ban_auto: bool = True          # автоматически выставлять спам-бан при PeerFloodError
     warmup_initiator: bool = False      # аккаунт инициирует прогревочные диалоги
+    warmup_receiver: bool = False       # аккаунт может быть выбран инициатором как получатель
     proxy: Optional[str] = None         # прокси URL: socks5://user:pass@host:port или http://...
 
 
@@ -72,6 +73,10 @@ class SpamBanAutoRequest(BaseModel):
 
 class WarmupInitiatorRequest(BaseModel):
     enabled: bool  # True — аккаунт инициирует прогревочные диалоги
+
+
+class WarmupReceiverRequest(BaseModel):
+    enabled: bool  # True — аккаунт может быть выбран инициатором как получатель
 
 
 class ProxyRequest(BaseModel):

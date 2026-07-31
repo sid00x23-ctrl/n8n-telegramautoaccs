@@ -368,6 +368,13 @@ async def update_warmup_initiator(account_id: str, request: Request):
     return await _proxy("PATCH", f"/accounts/{account_id}/warmup_initiator", json_body=body)
 
 
+@app.patch("/api/accounts/{account_id}/warmup_receiver")
+async def update_warmup_receiver(account_id: str, request: Request):
+    require_auth(request)
+    body = await request.json()
+    return await _proxy("PATCH", f"/accounts/{account_id}/warmup_receiver", json_body=body)
+
+
 @app.patch("/api/accounts/{account_id}/spam_ban_auto")
 async def update_spam_ban_auto(account_id: str, request: Request):
     require_auth(request)

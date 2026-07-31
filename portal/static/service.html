@@ -793,6 +793,14 @@
                           <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
                         </svg>
                       </button>
+                      <button class="btn btn-ghost btn-sm" data-receiver="${esc(acc.account_id)}"
+                        data-receiver-enabled="${acc.warmup_receiver === true}"
+                        title="Прогрев: получатель${acc.warmup_receiver ? ' (вкл.)' : ' (выкл.)'}">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${acc.warmup_receiver ? '#22c55e' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+                          <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+                        </svg>
+                      </button>
                       <button class="btn btn-ghost btn-sm" data-spamban="${esc(acc.account_id)}"
                         data-spamban-auto="${acc.spam_ban_auto !== false}"
                         title="Авто-бан${acc.spam_ban_auto === false ? ' (откл.)' : ''}">
@@ -842,6 +850,26 @@
             const acc = allAccounts.find(a => a.account_id === accId);
             if (acc) acc.warmup_initiator = newEnabled;
             _syncBulkWarmupBtn();
+          } catch (e) {
+            toast(e.message, 'err');
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
+
+      area.querySelectorAll('[data-receiver]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const accId = btn.dataset.receiver;
+          const newEnabled = btn.dataset.receiverEnabled !== 'true';
+          btn.disabled = true;
+          try {
+            await api('PATCH', `/api/accounts/${encodeURIComponent(accId)}/warmup_receiver`, { enabled: newEnabled });
+            btn.dataset.receiverEnabled = newEnabled;
+            btn.querySelector('svg').setAttribute('stroke', newEnabled ? '#22c55e' : 'currentColor');
+            btn.title = `Прогрев: получатель${newEnabled ? ' (вкл.)' : ' (выкл.)'}`;
+            const acc = allAccounts.find(a => a.account_id === accId);
+            if (acc) acc.warmup_receiver = newEnabled;
           } catch (e) {
             toast(e.message, 'err');
           } finally {
