@@ -1343,6 +1343,7 @@ class AccountManager:
                 "spam_ban_auto": cfg.spam_ban_auto if cfg else True,
                 "warmup_initiator": cfg.warmup_initiator if cfg else False,
                 "warmup_receiver": cfg.warmup_receiver if cfg else False,
+                "mailing_enabled": cfg.mailing_enabled if cfg else True,
                 "proxy": cfg.proxy if cfg else None,
                 "proxy_type": "mtproto" if cfg and cfg.proxy and ("t.me/proxy" in cfg.proxy or cfg.proxy.startswith("tg://proxy")) else ("socks" if cfg and cfg.proxy else None),
                 "proxy_error": self._proxy_errors.get(account_id),
