@@ -533,6 +533,19 @@ class AccountManager:
         cfg.username = me.username
         self._save_configs()
 
+        # Назначаем прокси если ещё нет
+        if self.proxy_pool and not cfg.proxy:
+            proxy = self.proxy_pool.get_account_proxy(account_id) or self.proxy_pool.get_best_proxy()
+            if proxy:
+                try:
+                    cfg.proxy = proxy["url"]
+                    self._save_configs()
+                    self.proxy_pool.assign_proxy_to_account(account_id, proxy_id=proxy["id"])
+                    asyncio.create_task(self._reconnect_to_proxy(account_id, proxy["url"]))
+                    logger.info(f"[{account_id}] Автоназначен прокси после авторизации: {proxy['id'][:8]}...")
+                except Exception as e:
+                    logger.warning(f"[{account_id}] Не удалось назначить прокси после авторизации: {e}")
+
         self._register_incoming_handler(client, account_id)
 
         logger.info(f"Аккаунт {account_id} успешно авторизован как {me.first_name} tg_id={me.id}")
@@ -658,6 +671,19 @@ class AccountManager:
             cfg.username = me.username
             cfg.phone = me.phone or cfg.phone
             self._save_configs()
+
+            # Назначаем прокси если ещё нет
+            if self.proxy_pool and not cfg.proxy:
+                proxy = self.proxy_pool.get_account_proxy(account_id) or self.proxy_pool.get_best_proxy()
+                if proxy:
+                    try:
+                        cfg.proxy = proxy["url"]
+                        self._save_configs()
+                        self.proxy_pool.assign_proxy_to_account(account_id, proxy_id=proxy["id"])
+                        asyncio.create_task(self._reconnect_to_proxy(account_id, proxy["url"]))
+                        logger.info(f"[{account_id}] Автоназначен прокси после QR-авторизации: {proxy['id'][:8]}...")
+                    except Exception as e:
+                        logger.warning(f"[{account_id}] Не удалось назначить прокси после QR-авторизации: {e}")
 
         self._register_incoming_handler(self.clients[account_id], account_id)
 
