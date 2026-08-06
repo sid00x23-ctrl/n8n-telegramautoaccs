@@ -652,41 +652,61 @@ async function loadDialogs() {
     if (allAccountsMode) {
       // sent_only=true только в режиме "С приветствием"
       const sentOnly = filterMode === 'sent';
-      const results = await Promise.all(
-        authorizedAccounts.map(a =>
-          api('GET', `/api/accounts/${a.account_id}/dialogs?limit=200&sent_only=${sentOnly}`)
-            .then(dialogs => {
-              console.log(`[loadDialogs] ${a.account_id}: ${dialogs.length} dialogs`);
-              return dialogs.map(d => ({
-                ...d,
-                _account_id:       a.account_id,
-                _account_name:     a.name || a.account_id,
-                _account_username: a.username || null,
-              }));
-            })
-            .catch(err => { console.warn(`[loadDialogs] ${a.account_id} FAILED:`, err); return []; })
-        )
-      );
-      allDialogs = results.flat().sort((a, b) => {
-        const da = a.last_message?.date || '';
-        const db = b.last_message?.date || '';
-        return db < da ? -1 : db > da ? 1 : 0;
+      allDialogs = [];
+      document.getElementById('dialogsList').innerHTML =
+        '<div style="padding:40px;text-align:center;color:var(--text-3);font-size:13px">Загрузка диалогов...</div>';
+
+      // Запускаем все запросы параллельно, рендерим по мере поступления
+      let pending = authorizedAccounts.length;
+      if (pending === 0) { renderDialogs(); return; }
+
+      authorizedAccounts.forEach(a => {
+        api('GET', `/api/accounts/${a.account_id}/dialogs?limit=200&sent_only=${sentOnly}`)
+          .then(dialogs => {
+            console.log(`[loadDialogs] ${a.account_id}: ${dialogs.length} dialogs`);
+            const tagged = dialogs.map(d => ({
+              ...d,
+              _account_id:       a.account_id,
+              _account_name:     a.name || a.account_id,
+              _account_username: a.username || null,
+            }));
+            allDialogs = [...allDialogs, ...tagged].sort((a, b) => {
+              const da = a.last_message?.date || '';
+              const db = b.last_message?.date || '';
+              return db < da ? -1 : db > da ? 1 : 0;
+            });
+            renderDialogs();
+          })
+          .catch(err => { console.warn(`[loadDialogs] ${a.account_id} FAILED:`, err); })
+          .finally(() => {
+            pending--;
+            if (pending === 0) console.log('[loadDialogs] total allDialogs:', allDialogs.length);
+          });
       });
-      console.log('[loadDialogs] total allDialogs:', allDialogs.length);
     } else {
       const sentOnly = filterMode !== 'all';
       allDialogs = await api('GET',
         `/api/accounts/${currentAccount}/dialogs?limit=200&sent_only=${sentOnly}`);
       console.log('[loadDialogs] single account dialogs:', allDialogs.length);
+      renderDialogs();
     }
-    renderDialogs();
   } catch (e) {
     document.getElementById('dialogsList').innerHTML =
       `<div style="padding:20px;color:var(--error);font-size:13px">${esc(e.message)}</div>`;
   }
 }
 
+let _renderPending = false;
 function renderDialogs() {
+  if (_renderPending) return;
+  _renderPending = true;
+  requestAnimationFrame(() => {
+    _renderPending = false;
+    _doRenderDialogs();
+  });
+}
+
+function _doRenderDialogs() {
   const rawQ = document.getElementById('searchInput').value.trim();
   const q = rawQ.toLowerCase().replace(/^@/, '');
   let list = q ? allDialogs.filter(d =>
