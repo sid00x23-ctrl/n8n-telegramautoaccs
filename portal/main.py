@@ -375,6 +375,20 @@ async def update_warmup_receiver(account_id: str, request: Request):
     return await _proxy("PATCH", f"/accounts/{account_id}/warmup_receiver", json_body=body)
 
 
+@app.patch("/api/accounts/{account_id}/spam_ban")
+async def update_spam_ban(account_id: str, request: Request):
+    require_auth(request)
+    body = await request.json()
+    return await _proxy("PATCH", f"/accounts/{account_id}/spam_ban", json_body=body)
+
+
+@app.patch("/api/accounts/{account_id}/mailing")
+async def update_account_mailing(account_id: str, request: Request):
+    require_auth(request)
+    body = await request.json()
+    return await _proxy("PATCH", f"/accounts/{account_id}/mailing", json_body=body)
+
+
 @app.patch("/api/accounts/{account_id}/spam_ban_auto")
 async def update_spam_ban_auto(account_id: str, request: Request):
     require_auth(request)
@@ -390,22 +404,31 @@ async def delete_account(account_id: str, request: Request):
 
 # ── Google Sheets contacts ────────────────────────────────────────────────────
 
+_SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets"
+
+
+def _open_worksheet():
+    creds = SACredentials.from_service_account_file(
+        GOOGLE_SA_JSON,
+        scopes=[_SHEETS_SCOPE],
+    )
+    gc = gspread.authorize(creds)
+    return gc.open_by_key(GOOGLE_SHEET_ID).worksheet(GOOGLE_SHEET_NAME)
+
+
 def _read_sheet_contacts() -> list[dict]:
     if not _GSPREAD_OK or not GOOGLE_SA_JSON or not GOOGLE_SHEET_ID:
         return []
-    creds = SACredentials.from_service_account_file(
-        GOOGLE_SA_JSON,
-        scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
-    )
-    gc = gspread.authorize(creds)
-    ws = gc.open_by_key(GOOGLE_SHEET_ID).worksheet(GOOGLE_SHEET_NAME)
+    ws = _open_worksheet()
     records = ws.get_all_records()
     result = []
     for r in records:
         if r.get("Статус"):
+            # Support both 'User_id' and 'User ID' column names
+            raw_uid = r.get("User_id") or r.get("User ID", "")
             try:
-                user_id = int(r["User_id"])
-            except (ValueError, KeyError):
+                user_id = int(raw_uid)
+            except (ValueError, TypeError):
                 continue
             result.append({
                 "user_id":  user_id,
@@ -413,6 +436,7 @@ def _read_sheet_contacts() -> list[dict]:
                 "name":     r.get("Имя", ""),
                 "account":  r.get("Аккаунт", ""),
                 "status":   r.get("Статус", ""),
+                "blocked":  str(r.get("Отключён", "")).strip() == "1",
             })
     return result
 

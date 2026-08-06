@@ -9,7 +9,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 from manager import AccountManager, _parse_proxy
-from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest, WarmupInitiatorRequest, WarmupReceiverRequest, ProxyRequest, AddProxyRequest, ProxySettingsRequest
+from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest, WarmupInitiatorRequest, WarmupReceiverRequest, MailingRequest, ProxyRequest, AddProxyRequest, ProxySettingsRequest
 
 
 def create_app(manager: AccountManager, proxy_pool=None) -> FastAPI:
@@ -244,6 +244,18 @@ def create_app(manager: AccountManager, proxy_pool=None) -> FastAPI:
         """
         try:
             return manager.update_warmup_receiver(account_id, body.enabled)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+
+    @app.patch("/accounts/{account_id}/mailing", tags=["system"])
+    async def update_mailing_enabled(account_id: str, body: MailingRequest):
+        """
+        Включить/выключить аккаунт из рассылки.
+
+        Body: {"enabled": true/false}
+        """
+        try:
+            return manager.update_mailing_enabled(account_id, body.enabled)
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
 

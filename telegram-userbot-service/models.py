@@ -50,6 +50,7 @@ class AccountConfig(BaseModel):
     spam_ban_auto: bool = True          # автоматически выставлять спам-бан при PeerFloodError
     warmup_initiator: bool = False      # аккаунт инициирует прогревочные диалоги
     warmup_receiver: bool = False       # аккаунт может быть выбран инициатором как получатель
+    mailing_enabled: bool = True        # участвует в рассылке (False — аккаунт пропускается при назначении)
     proxy: Optional[str] = None         # прокси URL: socks5://user:pass@host:port или http://...
 
 
@@ -77,6 +78,10 @@ class WarmupInitiatorRequest(BaseModel):
 
 class WarmupReceiverRequest(BaseModel):
     enabled: bool  # True — аккаунт может быть выбран инициатором как получатель
+
+
+class MailingRequest(BaseModel):
+    enabled: bool  # True — аккаунт участвует в рассылке, False — пропускается
 
 
 class ProxyRequest(BaseModel):

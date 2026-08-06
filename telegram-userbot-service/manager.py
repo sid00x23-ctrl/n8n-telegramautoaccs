@@ -1049,6 +1049,14 @@ class AccountManager:
         self._save_configs()
         return {"account_id": account_id, "warmup_receiver": cfg.warmup_receiver}
 
+    def update_mailing_enabled(self, account_id: str, enabled: bool) -> dict:
+        cfg = self.configs.get(account_id)
+        if cfg is None:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        cfg.mailing_enabled = enabled
+        self._save_configs()
+        return {"account_id": account_id, "mailing_enabled": cfg.mailing_enabled}
+
     def update_link_preview(self, account_id: str, link_preview_disabled: Optional[bool] = None) -> dict:
         cfg = self.configs.get(account_id)
         if cfg is None:
