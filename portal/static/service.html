@@ -768,24 +768,6 @@
                   <td>${statusBadge(acc)}</td>
                   <td style="text-align:right">
                     <div style="display:flex;gap:6px;justify-content:flex-end">
-                      <button class="btn btn-ghost btn-sm" data-typing="${esc(acc.account_id)}"
-                        data-typing-enabled="${acc.typing_enabled}"
-                        data-typing-min="${acc.typing_min_seconds}"
-                        data-typing-max="${acc.typing_max_seconds}"
-                        title="Настройки набора">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                          <line x1="9" y1="10" x2="9" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="15" y1="10" x2="15" y2="10"/>
-                        </svg>
-                      </button>
-                      <button class="btn btn-ghost btn-sm" data-preview="${esc(acc.account_id)}"
-                        data-preview-disabled="${acc.link_preview_disabled}"
-                        title="Превью ссылок${acc.link_preview_disabled ? ' (откл.)' : ''}">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${acc.link_preview_disabled ? '#ef4444' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                        </svg>
-                      </button>
                       <button class="btn btn-ghost btn-sm" data-warmup="${esc(acc.account_id)}"
                         data-warmup-enabled="${acc.warmup_initiator === true}"
                         title="Прогрев: инициатор${acc.warmup_initiator ? ' (вкл.)' : ' (выкл.)'}">
