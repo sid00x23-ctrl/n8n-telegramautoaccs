@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Патчи для n8n 2.32.x:
+# Патчи для n8n 2.32.x+:
 #   1. Разблокировка Enterprise-фич (license.js, license-state.js)
 #   2. Фикс двойного /n8n/ префикса в SPA-навигации (WorkflowsView)
+#   3. Скрытие баннера "not licensed for production" (frontend.service.js)
 #
 # Идемпотентный: повторный запуск не ломает уже пропатченные файлы.
 set -e
@@ -180,5 +181,39 @@ for wv_file in $(find "$N8N_DIR/node_modules/n8n-editor-ui/dist/assets" \
     -name 'WorkflowsView-*.js' ! -name '*.bak' 2>/dev/null); do
   patch_workflows_view "$wv_file"
 done
+
+# ---------------------------------------------------------------------------
+# 4. frontend.service.js — скрываем баннер "not licensed for production"
+#
+# isLicensed() → true для всех фич включает SHOW_NON_PROD_BANNER тоже.
+# Явно фиксируем showNonProdBanner: false на уровне backend-сервиса.
+# ---------------------------------------------------------------------------
+FRONTEND_SERVICE_JS="$N8N_DIR/dist/services/frontend.service.js"
+
+if [ ! -f "$FRONTEND_SERVICE_JS" ]; then
+  echo "  WARNING: frontend.service.js not found at $FRONTEND_SERVICE_JS, skipping"
+else
+
+python3 - "$FRONTEND_SERVICE_JS" << 'PYEOF'
+import sys, pathlib
+
+path = pathlib.Path(sys.argv[1])
+src = path.read_text()
+
+old = "showNonProdBanner: this.license.isLicensed(constants_1.LICENSE_FEATURES.SHOW_NON_PROD_BANNER),"
+new = "showNonProdBanner: false,"
+
+if old in src:
+    src = src.replace(old, new, 1)
+    path.write_text(src)
+    print(f'  patched: showNonProdBanner -> false')
+    print(f'  saved: {path}')
+elif new in src:
+    print(f'  already patched: showNonProdBanner: false')
+else:
+    print(f'  WARNING: pattern not found: {old[:70]}')
+PYEOF
+
+fi
 
 echo "==> patch-n8n.sh done"
