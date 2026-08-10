@@ -1,0 +1,232 @@
+{
+  "updatedAt": "2026-07-13T11:43:48.000Z",
+  "createdAt": "2026-07-13T09:03:10.662Z",
+  "id": "kS8JfvISlnlGFVWm",
+  "name": "03 - Ядро диалога Agent",
+  "description": null,
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b7615bf8-a4e3-4679-ba0b-a77a872faca7",
+      "name": "Вход из webhook-обработчика",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2304,
+        1408
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c9350f5d-1870-4791-ae30-417e5a2e1605",
+              "name": "kb",
+              "value": "\nДля чего встреча? → Познакомится с девушками близкими по духу и ценностям. + Обсудить - как убрать хаос в голове и что по-честному сейчас даёт сил и мотивирует.\n---\nКак будет проходить встреча? → Интерактив, в котором можно поучаствовать, а можно просто послушать. Мы на нём определяим главную зону, на которой сейчас стоит сфокусироваться. + Я поделюсь очень классной техникой “12 недель”. Это план из 6 правил для выхода в твою прайм-эру, чтобы на план не захотелось забить😄\n---\nКто ты такая?/Мы знакомы? → Ты у меня в контактах была, думала мы на мероприятиях встречались🙌\nЯ психолог, помогаю решения принимать сильные. В основном ко мне обращаются, чтобы по финансам вырасти, так как большой бэкграунд предпринимательский личный - и продюсерский центр, и консалтинговое агентство, и офлайн бизнес\nПри этом я в первую очередь помогаю прийти к спокойному и счастливому состоянию🤍\nА вот кейсы, если что: https://t.me/+uClTAxYJIH45MTQy\n---\nОткуда у вас мой контакт? → Нашла твой контакт у себя, может быть пересекались на мероприятиях) \n---\nНа каких именно мероприятиях пересекались? → Честно, точно не вспомню, был твой контакт, решила написать.\n---\nГде встреча?/В каком городе? → Встреча пройдет онлайн в Яндекс Телемосте)   \n---\nВ каком приложении? → Яндекс Телемост)   \n---\nСколько человек → Камерная обстановка, человек 15-20)   \n---\nСколько длится встреча? → Часа 1,5-2 максимум)   \n---\nЧто такое нестандартное мышление? → Это в хорошем смысле 😄  \n---\nПочему решили что мне нужно? → Я не решаю за вас 🤛🏻 Просто предлагаю присоединиться)   \n---\nКак зарегистрироваться? → Встреча онлайн, я могу записать.\n---\nКогда встреча? → В среду 8.07, 18:00мск\n---\nСпрашивает про запрос/вопрос → Это то, что волнует тебя лично и что бы ты хотела обсудить на встрече.\n---\nЧто вы имеете в виду под кризисом? → Это период, когда рост замедляется и старые инструменты перестают работать.\n---\nБудет ли запись? → Не уверена, поэтому лучше быть онлайн) Но если будет обязательно скину \n---\nКто будет на встрече? → Только девушки, близкие по духу и ценностям\n---\nКакая цена?/Сколько стоит? → Встреча бесплатная.\n\n",
+              "type": "string"
+            },
+            {
+              "id": "f0c18aae-542e-4c37-99eb-e3f3e69d869b",
+              "name": "state",
+              "value": "={{ $json.Статус }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1792,
+        1408
+      ],
+      "id": "df3c1cdd-063b-4a4e-885e-d6488a9651b5",
+      "name": "Set: База знаний"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk",
+          "mode": "list",
+          "cachedResultName": "Moscow 6304",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 174905087,
+          "mode": "list",
+          "cachedResultName": "Участники",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk/edit#gid=174905087"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "UserID",
+              "lookupValue": "={{ $json.chat_id }}"
+            }
+          ]
+        },
+        "options": {
+          "returnFirstMatch": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -2048,
+        1408
+      ],
+      "id": "a4a9fb96-27a1-49a5-9255-5776c060ccc0",
+      "name": "Получаем статус из бд",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1568,
+        1360
+      ],
+      "id": "f7910e53-1ee8-4e1a-b2b8-61a358dc0698",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk",
+          "mode": "list",
+          "cachedResultName": "Moscow 6304",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 174905087,
+          "mode": "list",
+          "cachedResultName": "Участники",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk/edit#gid=174905087"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "UserID"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        -1424,
+        1568
+      ],
+      "id": "2500a9ae-534e-4935-a1b8-d7f08ab73509",
+      "name": "Get row(s) in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Вход из webhook-обработчика": {
+      "main": [
+        [
+          {
+            "node": "Получаем статус из бд",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: База знаний": {
+      "main": [
+        []
+      ]
+    },
+    "Получаем статус из бд": {
+      "main": [
+        [
+          {
+            "node": "Set: База знаний",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "574c1f5a-711c-4a28-aecd-3484e846433d",
+  "activeVersionId": null,
+  "versionCounter": 27,
+  "triggerCount": 0,
+  "tags": [
+    {
+      "updatedAt": "2026-07-10T11:52:53.636Z",
+      "createdAt": "2026-07-10T11:52:53.636Z",
+      "id": "UEdNW1SrBJ1c8dzY",
+      "name": "AnastyMEETING"
+    }
+  ],
+  "shared": [
+    {
+      "updatedAt": "2026-07-13T09:03:10.674Z",
+      "createdAt": "2026-07-13T09:03:10.674Z",
+      "role": "workflow:owner",
+      "workflowId": "kS8JfvISlnlGFVWm",
+      "projectId": "FuB2P81JUmVyRc9b",
+      "project": {
+        "updatedAt": "2026-07-10T11:52:37.043Z",
+        "createdAt": "2026-07-10T11:51:07.140Z",
+        "id": "FuB2P81JUmVyRc9b",
+        "name": "Anna Anna@gmail.com <anna@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      }
+    }
+  ]
+}

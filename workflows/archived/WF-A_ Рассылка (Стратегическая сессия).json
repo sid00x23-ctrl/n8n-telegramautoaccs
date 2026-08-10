@@ -1,0 +1,608 @@
+{
+  "updatedAt": "2026-07-29T09:40:12.000Z",
+  "createdAt": "2026-07-28T12:38:06.550Z",
+  "id": "1W9pmPRGpLHYSVLg",
+  "name": "WF-A: Рассылка (Стратегическая сессия)",
+  "description": null,
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1-5"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "30 10 * * 1-5"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 12 * * 1-5"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "30 13 * * 1-5"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 15 * * 1-5"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "30 16 * * 1-5"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "wfa-schedule",
+      "name": "По расписанию",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:8000/accounts",
+        "options": {}
+      },
+      "id": "wfa-get-accounts",
+      "name": "Получаем аккаунты",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const accounts = $input.all().map(item => item.json);\nreturn [{ json: { accounts } }];"
+      },
+      "id": "wfa-agg-accounts",
+      "name": "Агрегируем аккаунты",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "174905087",
+          "cachedResultName": "Участники"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Статус",
+              "lookupValue": "new"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "wfa-read-leads",
+      "name": "Читаем новых лидов",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        720,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const accountsList = $('Агрегируем аккаунты').first().json.accounts || [];\nconst available = accountsList.filter(a => a.available === true);\n\nif (!available.length) {\n  console.log('Нет доступных аккаунтов');\n  return [];\n}\n\nconst leads = $input.all().filter(c => String(c.json['UserID'] || '').trim() !== '');\n\nif (!leads.length) {\n  console.log('Нет новых лидов');\n  return [];\n}\n\nconst toAssign = leads.slice(0, available.length);\nconst now = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Moscow' }).substring(0, 16);\n\nconsole.log(`Назначаем: ${toAssign.length} лидов на ${available.length} аккаунтов`);\n\nreturn toAssign.map((c, i) => ({\n  json: {\n    ...c.json,\n    executor_bot_id: available[i].account_id,\n    Аккаунт: available[i].account_id,\n    Дата_контакта: now,\n  }\n}));"
+      },
+      "id": "wfa-assign",
+      "name": "Назначаем аккаунты",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "174905087",
+          "cachedResultName": "Участники"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "UserID": "={{ $json['UserID'] }}",
+            "Статус": "assigned",
+            "Аккаунт": "={{ $json['Аккаунт'] }}",
+            "Назначен": "={{ $json['Дата_контакта'] }}",
+            "Дата контакта": "={{ $json['Дата_контакта'] }}"
+          },
+          "matchingColumns": [
+            "UserID"
+          ],
+          "schema": [
+            {
+              "id": "UserID",
+              "displayName": "UserID",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Статус",
+              "displayName": "Статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Аккаунт",
+              "displayName": "Аккаунт",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Назначен",
+              "displayName": "Назначен",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Дата контакта",
+              "displayName": "Дата контакта",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "wfa-update-assigned",
+      "name": "Статус → assigned",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1200,
+        304
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 3,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Ты помогаешь писать первое сообщение в Telegram от имени коуча.\n\nШаблон:\n\"{{ $('Читаем новых лидов').item.json['Имя(для рассылки)'] }}, привет! Как ты себя чувствуешь?\nХочу тебе стратегическую сессию провести, ты как на это смотришь?\"\n\nЗадача: подставь имя человека и слегка перефразируй одно-два предложения (синонимы, небольшой порядок слов). Смысл должен остаться тем же.\n\nПравила:\n- Обращение на «ты»\n- Имя обязательно в начале первого предложения\n- Никаких смайлов и ничего лишнего\n- Верни ТОЛЬКО текст сообщения, без кавычек и пояснений"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "wfa-llm-chain",
+      "name": "AI: генерируем приветствие",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1440,
+        304
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "id": "wfa-deepseek",
+      "name": "DeepSeek: приветствие",
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        464
+      ],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YRNER6ASeGb1i8yE",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $json.text || $json.response || '';\nconst lead = $('Статус → assigned').item.json;\nreturn [{ json: { ...lead, message_text: text } }];"
+      },
+      "id": "wfa-save-text",
+      "name": "Сохраняем текст",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $json['Аккаунт'] }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $json['UserID'] }}"
+            },
+            {
+              "name": "username",
+              "value": "={{ $json['Username'] || '' }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json['message_text'] }}"
+            },
+            {
+              "name": "rate_limited",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "wfa-send-msg",
+      "name": "Отправляем сообщение",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        304
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const userId = String($json['UserID'] || '').replace(/'/g, \"''\");\nconst msgText = String($json['message_text'] || '').replace(/'/g, \"''\");\n\nconst messageJson = JSON.stringify({\n  type: 'ai',\n  data: {\n    content: $json['message_text'] || '',\n    additional_kwargs: {}\n  }\n}).replace(/'/g, \"''\");\n\nreturn [{\n  json: {\n    ...$json,\n    pg_query: `INSERT INTO n8n_chat_histories (session_id, message) VALUES ('${userId}', '${messageJson}'::jsonb)`\n  }\n}];"
+      },
+      "id": "wfa-prepare-sql",
+      "name": "Готовим запрос в память",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json['pg_query'] }}",
+        "options": {}
+      },
+      "id": "wfa-pg-memory",
+      "name": "Пишем в память агента",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2400,
+        304
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "Nz3cspbRJ5eUSNFW",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "174905087",
+          "cachedResultName": "Участники"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "UserID": "={{ $json['UserID'] }}",
+            "Статус": "contacted"
+          },
+          "matchingColumns": [
+            "UserID"
+          ],
+          "schema": [
+            {
+              "id": "UserID",
+              "displayName": "UserID",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Статус",
+              "displayName": "Статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "wfa-update-contacted",
+      "name": "Статус → contacted",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2640,
+        304
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 3,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "По расписанию": {
+      "main": [
+        [
+          {
+            "node": "Получаем аккаунты",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Получаем аккаунты": {
+      "main": [
+        [
+          {
+            "node": "Агрегируем аккаунты",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Агрегируем аккаунты": {
+      "main": [
+        [
+          {
+            "node": "Читаем новых лидов",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Читаем новых лидов": {
+      "main": [
+        [
+          {
+            "node": "Назначаем аккаунты",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Назначаем аккаунты": {
+      "main": [
+        [
+          {
+            "node": "Статус → assigned",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Статус → assigned": {
+      "main": [
+        [
+          {
+            "node": "AI: генерируем приветствие",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek: приветствие": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: генерируем приветствие",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: генерируем приветствие": {
+      "main": [
+        [
+          {
+            "node": "Сохраняем текст",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сохраняем текст": {
+      "main": [
+        [
+          {
+            "node": "Отправляем сообщение",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Отправляем сообщение": {
+      "main": [
+        [
+          {
+            "node": "Готовим запрос в память",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Готовим запрос в память": {
+      "main": [
+        [
+          {
+            "node": "Пишем в память агента",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Пишем в память агента": {
+      "main": [
+        [
+          {
+            "node": "Статус → contacted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Moscow",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": {
+    "node:По расписанию": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "pinData": {},
+  "versionId": "319bc430-4bdc-4a84-8e6a-d5f98137db84",
+  "activeVersionId": null,
+  "versionCounter": 28,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-07-28T12:38:06.556Z",
+      "createdAt": "2026-07-28T12:38:06.556Z",
+      "role": "workflow:owner",
+      "workflowId": "1W9pmPRGpLHYSVLg",
+      "projectId": "FuB2P81JUmVyRc9b",
+      "project": {
+        "updatedAt": "2026-07-10T11:52:37.043Z",
+        "createdAt": "2026-07-10T11:51:07.140Z",
+        "id": "FuB2P81JUmVyRc9b",
+        "name": "Anna Anna@gmail.com <anna@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      }
+    }
+  ]
+}

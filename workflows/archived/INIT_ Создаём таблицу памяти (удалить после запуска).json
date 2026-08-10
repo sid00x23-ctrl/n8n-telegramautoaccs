@@ -1,0 +1,92 @@
+{
+  "updatedAt": "2026-07-28T13:37:59.000Z",
+  "createdAt": "2026-07-28T12:55:53.883Z",
+  "id": "My27xB7qCpMfi8W6",
+  "name": "INIT: Создаём таблицу памяти (удалить после запуска)",
+  "description": null,
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "id": "init-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "path": "init-chat-memory",
+        "responseMode": "lastNode"
+      },
+      "webhookId": "f6986faf-d1d0-456e-beca-7706277f37b5"
+    },
+    {
+      "id": "init-postgres",
+      "name": "Создаём таблицу",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS n8n_chat_histories (\n  id         SERIAL PRIMARY KEY,\n  session_id VARCHAR(255) NOT NULL,\n  message    JSONB        NOT NULL,\n  created_at TIMESTAMPTZ  DEFAULT NOW()\n);\n\nCREATE INDEX IF NOT EXISTS idx_chat_histories_session\n  ON n8n_chat_histories (session_id);\n\nSELECT 'Table created successfully' AS result;",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "Nz3cspbRJ5eUSNFW",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Создаём таблицу",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "b0fb54ed-5473-4fcb-85c5-56d5626be88a",
+  "activeVersionId": null,
+  "versionCounter": 2,
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-07-28T12:55:53.893Z",
+      "createdAt": "2026-07-28T12:55:53.893Z",
+      "role": "workflow:owner",
+      "workflowId": "My27xB7qCpMfi8W6",
+      "projectId": "FuB2P81JUmVyRc9b",
+      "project": {
+        "updatedAt": "2026-07-10T11:52:37.043Z",
+        "createdAt": "2026-07-10T11:51:07.140Z",
+        "id": "FuB2P81JUmVyRc9b",
+        "name": "Anna Anna@gmail.com <anna@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      }
+    }
+  ]
+}

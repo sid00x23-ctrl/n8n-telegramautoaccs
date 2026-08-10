@@ -1,0 +1,701 @@
+{
+  "updatedAt": "2026-07-28T13:37:28.562Z",
+  "createdAt": "2026-07-11T15:17:29.206Z",
+  "id": "2hmmIrG5Lh2Rh4Jv",
+  "name": "04 - Входящие сообщения (Webhook от Telethon)",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-incoming",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d75b8f9c-402a-4852-a2ad-bf9204d2cb2b",
+      "name": "Webhook: входящее сообщение",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1152,
+        176
+      ],
+      "webhookId": "56f90e11-c56b-4ccf-876e-ff13f5d49572",
+      "onError": "continueRegularOutput",
+      "notes": "Telethon-сервис шлёт сюда все входящие ЛС. URL: http://n8n-host:5678/webhook/telegram-incoming"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\": \"received\"}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "41d59262-0e78-4e95-9777-e861c9de99fe",
+      "name": "Ответ сервису (200 OK)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -912,
+        416
+      ],
+      "notes": "Отвечаем сразу, чтобы не блокировать Telethon-сервис"
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $input.first().json.body;\nreturn [{ json: {\n  chat_id:       b.chat_id,\n  message_text:  b.message_text,\n  account_id:    b.account_id,\n  from_user_id:  b.from_user_id,\n  from_username: b.from_username ?? '',\n  message_id:    b.message_id,\n  timestamp:     b.timestamp,\n} }];"
+      },
+      "id": "aff6a311-ce16-49b8-8510-2969a3b7c893",
+      "name": "Нормализуем входящие данные",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -912,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.Статус }}",
+              "rightValue": "greetings_sent",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.Статус }}",
+              "rightValue": "details",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c3",
+              "leftValue": "={{ $json.Статус }}",
+              "rightValue": "ask_request",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "a15fdb12-61cf-425f-9a16-c80976720004",
+              "leftValue": "={{ $json.Статус }}",
+              "rightValue": "doubt",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "55c50cfd-37df-48fe-a00c-7fd501abbe14",
+      "name": "Диалог найден?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "push",
+        "list": "={{ 'buffer:' + $('Нормализуем входящие данные').item.json.chat_id }}",
+        "messageData": "={{ $('Нормализуем входящие данные').item.json.message_text }}"
+      },
+      "id": "6c709008-6a0f-4c06-8f1c-16fd2eb3c91d",
+      "name": "Пушим в буфер",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        176
+      ],
+      "credentials": {
+        "redis": {
+          "id": "2DgAUFNJE0F5LccX",
+          "name": "Redis account"
+        }
+      },
+      "notes": "Добавляем сообщение в список buffer:{chat_id}"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ Object.values($json)[0] }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "caa05155-1bd9-43d2-806f-ccbc71fac3b0",
+      "name": "Первый?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        176,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "messages",
+        "key": "={{ 'buffer:' + $('Нормализуем входящие данные').item.json.chat_id }}",
+        "keyType": "list",
+        "options": {}
+      },
+      "id": "eb941196-ba2d-4282-b090-dfd7ca0dd8f7",
+      "name": "Читаем буфер",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        624,
+        176
+      ],
+      "credentials": {
+        "redis": {
+          "id": "2DgAUFNJE0F5LccX",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ 'buffer:' + $('Нормализуем входящие данные').item.json.chat_id }}"
+      },
+      "id": "ef8a1f19-27be-4959-8313-c697c152d7c0",
+      "name": "Удаляем буфер",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        832,
+        176
+      ],
+      "credentials": {
+        "redis": {
+          "id": "2DgAUFNJE0F5LccX",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const messages = $('Читаем буфер').item.json.messages;\nconst chatId = $('Нормализуем входящие данные').item.json.chat_id;\nconst accountId = $('Нормализуем входящие данные').item.json.account_id;\n\nconst msgsArray = Array.isArray(messages) ? messages : [messages ?? ''];\nconst messagesText = msgsArray.join('\\n---\\n');\n\nreturn [{ json: {\n  chat_id: chatId,\n  account_id: accountId,\n  message_count: msgsArray.length,\n  messages_text: messagesText\n} }];"
+      },
+      "id": "1be38d33-db5f-44be-a8f3-f1a590100545",
+      "name": "Готовим текст для AI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ты получил сообщения от одного пользователя: {{ $json.messages_text }} Тебе нужно структурировать их и передать.",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Передать нужно в четко в формате, который указан в примерах. Нужно дать только ответ без пояснений."
+            },
+            {
+              "type": "AIMessagePromptTemplate",
+              "message": "1. Клиент интересуется.\n2. Клиент спрашивает о том, кто ты такая.\n3. Клиент спрашивает о том, где пройдет встреча."
+            },
+            {
+              "type": "AIMessagePromptTemplate",
+              "message": "1. Клиенту не интересно."
+            },
+            {
+              "type": "AIMessagePromptTemplate",
+              "message": "1. Клиент спрашивает - откуда ты?"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "d42820d3-428e-4f9d-89a5-b245f3862626",
+      "name": "AI: объединяем сообщения",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1536,
+        160
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "rZ9YV1QaHKQCFOpc",
+          "mode": "id",
+          "cachedResultUrl": "/n8n/workflow/rZ9YV1QaHKQCFOpc"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chat_id": "={{ $('Готовим текст для AI').item.json.chat_id }}",
+            "message_text": "={{ $json.text }}",
+            "account_id": "={{ $('Готовим текст для AI').item.json.account_id }}",
+            "message_id": "={{ $('Нормализуем входящие данные').item.json.message_id }}",
+            "from_username": "={{ $('Нормализуем входящие данные').item.json.from_username }}"
+          },
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "dfbcc136-8733-467c-abba-69edf7ad095e",
+      "name": "Запускаем ядро диалога",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1952,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "llen",
+        "list": "={{ 'buffer:' + $('Нормализуем входящие данные').item.json.chat_id }}"
+      },
+      "id": "f0fd4483-8db8-45a4-bec8-9230d81bc294",
+      "name": "Длина буфера",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        0,
+        400
+      ],
+      "credentials": {
+        "redis": {
+          "id": "2DgAUFNJE0F5LccX",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "expire"
+      },
+      "id": "da467de6-3569-48d8-8d0f-368110973d02",
+      "name": "TTL на буфер",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "redis": {
+          "id": "2DgAUFNJE0F5LccX",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 70
+      },
+      "id": "b388cc18-237c-4943-bf72-9d4b220e3b62",
+      "name": "Ждем 60 секунд",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        384
+      ],
+      "webhookId": "c3d4e5f6-0004-0001-0001-000000000001",
+      "notes": "Ждём 1 минуту — за это время пользователь может написать ещё сообщения"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk",
+          "mode": "list",
+          "cachedResultName": "Moscow 6304",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 174905087,
+          "mode": "list",
+          "cachedResultName": "Участники",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk/edit#gid=174905087"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "UserID",
+              "lookupValue": "={{ $json.chat_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -688,
+        176
+      ],
+      "id": "b1ad4f17-df4f-45cf-ab0a-75f072a1d932",
+      "name": "Get row(s) in sheet",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-msg-count",
+              "leftValue": "={{ $json.message_count }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7bdac85c-4958-4e9b-b9b5-1735a2e1f9ba",
+      "name": "Один или несколько?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-text",
+              "name": "text",
+              "value": "={{ $json.messages_text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "cc4c28fb-789d-4cbb-8877-4db43a2c9677",
+      "name": "Одно сообщение: передаём как есть",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1472,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        1504,
+        320
+      ],
+      "id": "01cd1f15-ba64-4d96-83a3-9dcae6be88c0",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YRNER6ASeGb1i8yE",
+          "name": "DeepSeek account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: входящее сообщение": {
+      "main": [
+        [
+          {
+            "node": "Нормализуем входящие данные",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Нормализуем входящие данные": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Ответ сервису (200 OK)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Диалог найден?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Диалог найден?": {
+      "main": [
+        [
+          {
+            "node": "Пушим в буфер",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Пушим в буфер": {
+      "main": [
+        [
+          {
+            "node": "TTL на буфер",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Длина буфера",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Длина буфера": {
+      "main": [
+        [
+          {
+            "node": "Первый?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Первый?": {
+      "main": [
+        [
+          {
+            "node": "Ждем 60 секунд",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ждем 60 секунд": {
+      "main": [
+        [
+          {
+            "node": "Читаем буфер",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Читаем буфер": {
+      "main": [
+        [
+          {
+            "node": "Удаляем буфер",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Удаляем буфер": {
+      "main": [
+        [
+          {
+            "node": "Готовим текст для AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Готовим текст для AI": {
+      "main": [
+        [
+          {
+            "node": "Один или несколько?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Один или несколько?": {
+      "main": [
+        [
+          {
+            "node": "AI: объединяем сообщения",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Одно сообщение: передаём как есть",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: объединяем сообщения": {
+      "main": [
+        [
+          {
+            "node": "Запускаем ядро диалога",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Одно сообщение: передаём как есть": {
+      "main": [
+        [
+          {
+            "node": "Запускаем ядро диалога",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: объединяем сообщения",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "5c60bb37-5d56-4522-a35c-0f859f9325cb",
+  "activeVersionId": null,
+  "versionCounter": 89,
+  "triggerCount": 1,
+  "tags": [
+    {
+      "updatedAt": "2026-07-10T11:52:53.636Z",
+      "createdAt": "2026-07-10T11:52:53.636Z",
+      "id": "UEdNW1SrBJ1c8dzY",
+      "name": "AnastyMEETING"
+    }
+  ],
+  "shared": [
+    {
+      "updatedAt": "2026-07-11T15:17:29.215Z",
+      "createdAt": "2026-07-11T15:17:29.215Z",
+      "role": "workflow:owner",
+      "workflowId": "2hmmIrG5Lh2Rh4Jv",
+      "projectId": "FuB2P81JUmVyRc9b",
+      "project": {
+        "updatedAt": "2026-07-10T11:52:37.043Z",
+        "createdAt": "2026-07-10T11:51:07.140Z",
+        "id": "FuB2P81JUmVyRc9b",
+        "name": "Anna Anna@gmail.com <anna@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      }
+    }
+  ]
+}

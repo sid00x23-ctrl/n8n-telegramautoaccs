@@ -1,0 +1,114 @@
+{
+  "updatedAt": "2026-07-28T12:34:00.000Z",
+  "createdAt": "2026-07-27T11:58:42.446Z",
+  "id": "IIw9i7962He9o7Et",
+  "name": "Fix: Add Missing Warmup Pairs",
+  "description": null,
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "id": "append1",
+      "name": "Append Missing Pairs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      },
+      "parameters": {
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1WgMqHd8i6bXXp_PN-OQpD9NJkFDuJxW3uZDHlIJ297M/values/warmup_pairs%21A1:append",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "valueInputOption",
+              "value": "RAW"
+            },
+            {
+              "name": "insertDataOption",
+              "value": "INSERT_ROWS"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"values\": [\n    [\"@annavan03_@annavan06_20260727\", \"@annavan03\", 8808956858, \"@annavan06\", 8613754506, \"2026-07-27T10:17:42.000Z\", \"@annavan03\", \"Привет! Тут тестируем ретаргет на холодную аудиторию - результаты странные. У вас такое было, или это мы что-то напутали\", \"2026-07-27T11:50:00.000Z\", \"active\"],\n    [\"@annavan06_@annavan33_20260727\", \"@annavan06\", 8613754506, \"@annavan33\", 8865310742, \"2026-07-27T10:23:32.000Z\", \"@annavan33\", \"Привет, да есть один лайфхак\", \"2026-07-27T11:50:00.000Z\", \"active\"],\n    [\"@annavan00_@annavan05_20260727\", \"@annavan00\", 8604038018, \"@annavan05\", 8665892717, \"2026-07-27T10:33:53.000Z\", \"@annavan00\", \"Привет! Внедряешь ли ретаргет в нынешнюю воронку? Хочу обсудить, как он у нас конвертит на тёплых лидах.\", \"2026-07-27T11:50:00.000Z\", \"active\"]\n  ]\n}"
+      }
+    },
+    {
+      "id": "webhook1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "add-missing-pairs",
+        "responseMode": "lastNode"
+      },
+      "webhookId": "dcd8b534-93be-46ff-a9fe-82e453c54699"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Append Missing Pairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "4f86b65c-0c7a-47bf-a151-409d9ffac3cb",
+  "activeVersionId": null,
+  "versionCounter": 10,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-07-27T11:58:42.449Z",
+      "createdAt": "2026-07-27T11:58:42.449Z",
+      "role": "workflow:owner",
+      "workflowId": "IIw9i7962He9o7Et",
+      "projectId": "FuB2P81JUmVyRc9b",
+      "project": {
+        "updatedAt": "2026-07-10T11:52:37.043Z",
+        "createdAt": "2026-07-10T11:51:07.140Z",
+        "id": "FuB2P81JUmVyRc9b",
+        "name": "Anna Anna@gmail.com <anna@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      }
+    }
+  ]
+}

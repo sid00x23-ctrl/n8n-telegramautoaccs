@@ -1,0 +1,107 @@
+{
+  "updatedAt": "2026-07-28T12:34:03.000Z",
+  "createdAt": "2026-07-27T11:06:45.331Z",
+  "id": "NMZT5Fvdt8KPWGFj",
+  "name": "Fix: Repair corrupted warmup_pairs row 2",
+  "description": null,
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "id": "fix2-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "fix2-http",
+      "name": "Fix Row 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "method": "PUT",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1WgMqHd8i6bXXp_PN-OQpD9NJkFDuJxW3uZDHlIJ297M/values/warmup_pairs%21A2%3AJ2",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "valueInputOption",
+              "value": "RAW"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ values: [['@annavan05_@annavan33_1785149147045', '@annavan05', 8665892717, '@annavan33', 8865310742, '2026-07-27T10:45:47.045Z', '@annavan33', 'Привет! Да, мы на скоринге сидим плотно, но просадка все равно есть. Чаще всего проблема в том, что критерии слишком жесткие или данные на входе кривые. Можешь скинуть цифры, гляну?', '2026-07-27T11:58:40.081Z', 'active']] }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fix Row 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "378c975a-1fbb-4b72-a760-7d1d2a38f851",
+  "activeVersionId": null,
+  "versionCounter": 2,
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-07-27T11:06:45.342Z",
+      "createdAt": "2026-07-27T11:06:45.342Z",
+      "role": "workflow:owner",
+      "workflowId": "NMZT5Fvdt8KPWGFj",
+      "projectId": "FuB2P81JUmVyRc9b",
+      "project": {
+        "updatedAt": "2026-07-10T11:52:37.043Z",
+        "createdAt": "2026-07-10T11:51:07.140Z",
+        "id": "FuB2P81JUmVyRc9b",
+        "name": "Anna Anna@gmail.com <anna@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      }
+    }
+  ]
+}

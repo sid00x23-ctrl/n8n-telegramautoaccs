@@ -9,16 +9,10 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 from manager import AccountManager, _parse_proxy
-from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest, WarmupInitiatorRequest, WarmupReceiverRequest, MailingRequest, ProxyRequest, AddProxyRequest, ProxySettingsRequest, CommentingChannelRequest
-from commenting_channels import ChannelManager
+from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest, WarmupInitiatorRequest, WarmupReceiverRequest, MailingRequest, ProxyRequest, AddProxyRequest, ProxySettingsRequest
 
 
-def create_app(
-    manager: AccountManager,
-    proxy_pool=None,
-    commenting_manager: Optional[AccountManager] = None,
-    channel_manager: Optional[ChannelManager] = None,
-) -> FastAPI:
+def create_app(manager: AccountManager, proxy_pool=None, commenting_manager: Optional[AccountManager] = None) -> FastAPI:
     app = FastAPI(
         title="Telegram Userbot Service",
         description="HTTP API для n8n — отправка сообщений через личные Telegram-аккаунты",
@@ -449,29 +443,5 @@ def create_app(
                 raise HTTPException(status_code=404, detail=f"Аккаунт '{account_id}' не найден")
             await commenting_manager.logout(account_id)
             return {"status": "deleted", "account_id": account_id}
-
-    # ------------------------------------------------------------------ #
-    #  Commenting channels                                                  #
-    # ------------------------------------------------------------------ #
-
-    if channel_manager is not None:
-
-        @app.get("/commenting/channels", tags=["commenting"])
-        async def list_commenting_channels():
-            return channel_manager.list_channels()
-
-        @app.post("/commenting/channels", tags=["commenting"])
-        async def add_commenting_channel(body: CommentingChannelRequest):
-            try:
-                return channel_manager.add_channel(body.link)
-            except ValueError as e:
-                raise HTTPException(status_code=400, detail=str(e))
-
-        @app.delete("/commenting/channels/{channel_id}", tags=["commenting"])
-        async def remove_commenting_channel(channel_id: str):
-            try:
-                return channel_manager.remove_channel(channel_id)
-            except ValueError as e:
-                raise HTTPException(status_code=404, detail=str(e))
 
     return app

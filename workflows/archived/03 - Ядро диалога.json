@@ -1,0 +1,2878 @@
+{
+  "updatedAt": "2026-07-12T09:09:10.000Z",
+  "createdAt": "2026-07-12T08:33:24.840Z",
+  "id": "5h35dZhtGH9yhgbb",
+  "name": "03 - Ядро диалога",
+  "description": null,
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "3b0614df-e9bb-4526-abbc-b128aea7ae17",
+      "name": "Вход из webhook-обработчика",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2512,
+        1408
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.state }}",
+                    "rightValue": "greetings_sent",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b53893c7-5e50-4fa4-b777-350a52d66e59"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "greeting"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.state }}",
+                    "rightValue": "details",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "2b68eb9a-b9f6-452b-a764-7a7e92fbdcee"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "details"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.state }}",
+                    "rightValue": "ask_request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "82f5489e-9fdc-4586-8192-cd496325aa44"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ask_request"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "84bac5ef-14a4-4a29-b8f4-4e591f760042",
+                    "leftValue": "{{ $json.state }}",
+                    "rightValue": "doubt",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "doubt"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "465bf532-b6c5-429e-97b2-8fc3486db74c",
+      "name": "Switch: состояние",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -1712,
+        1376
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Вход из webhook-обработчика').item.json.message_text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Ты классификатор намерений. Клиенту отправлено приветственное сообщение с приглашением на встречу. Клиенту задан вопрос - скинуть подробности? Определи намерение клиента.\n\nВозможные намерения:\n- interested — клиент проявляет интерес к встрече/задает вопрос о встрече\n- not_interested — клиент отказывается, говорит что не интересно, просит не беспокоить, говорит что не успеет, не сможет присутствовать\n- other_question — клиент задаёт вопрос, который нельзя отнести к interested намерению\n- other — невозможно определить, клиент отвечает что-то, не относящееся к теме приглашения или встречи\n\nОтветь СТРОГО одним словом без объяснений: interested, not_interested или other_question"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "6456c93d-128e-487b-96a2-a7312f98c89c",
+      "name": "AI: классификатор намерения",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1120,
+        288
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "id": "e2d5b10e-271d-4315-b58f-06ffbc890df0",
+      "name": "DeepSeek: классификатор",
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        448
+      ],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YRNER6ASeGb1i8yE",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $input.first().json.text }}",
+                    "rightValue": "interested",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "5be8f7b1-532a-4833-a7fb-3b6f2af507e2"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "интересно"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $input.first().json.text }}",
+                    "rightValue": "other_question",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "992e74c0-1580-487a-a295-41fdff6c8596"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "другой вопрос"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $input.first().json.text }}",
+                    "rightValue": "not_interested",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "0eaab885-1845-4ff6-b802-eac72d98da1d"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "не интересно"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "358799a9-e349-4eb1-a397-44a9c4554366",
+                    "leftValue": "={{ $input.first().json.text }}",
+                    "rightValue": "other",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "не по теме"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5d19713e-9803-442f-b0ea-0adcc8c2e2a0",
+      "name": "Switch: намерение",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -592,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const templates = [\n  'Поняла, спасибо за обратную связь ☺️ Хорошего дня!',\n  'Поняла тебя 😊 Спасибо за ответ и всего доброго!',\n  'Спасибо, что дала знать. Хорошего настроения и удачного дня 🌷',\n  'Благодарю за ответ 🙌🏻 Хорошего дня!',\n  'Благодарю за ответ. Всего доброго ✨'\n];\nconst text = templates[Math.floor(Math.random() * templates.length)];\nreturn [{ json: { ...$input.first().json, text } }];"
+      },
+      "id": "24c0c2df-e2bd-4b96-a176-9a4248f97a8d",
+      "name": "Выбираем шаблон (не интересно)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        1760
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.account_id }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e6a0c42a-09b0-4b35-bf51-ecdb002293f6",
+      "name": "Отправляем ответ (не интересно)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -32,
+        1760
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.account_id }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "instant",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d6e6ec34-1c32-4e98-bede-5838b01d0b24",
+      "name": "Отправляем детали встречи",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Вход из webhook-обработчика').item.json.message_text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Ты классификатор намерений.\n\nКонтекст:\nКлиенту уже были отправлены детали встречи и задан вопрос:\n«Успеваешь по времени?»\n\nТвоя задача — определить намерение клиента ТОЛЬКО по его последнему сообщению.\n\nВарианты ответа:\n\nagreed\n\n* клиент соглашается\n* клиент подтверждает участие\n* клиент сообщает, что сможет прийти\n* клиенту интересно\n* клиент пишет: \"да\", \"ок\", \"хорошо\", \"подходит\", \"успеваю\", \"буду\", \"смогу\", \"получится\", \"удобно\",\"давайте\"\n\nnot_agreed\n\n* клиент явно отказывается\n* клиент сообщает, что не сможет прийти\n* клиент пишет: \"нет\", \"не смогу\", \"не успеваю\", \"не получится\", \"неудобно\", \"не хочу\", \"не буду\"\n\ndoubt\n\n* клиент не знает, сможет ли прийти\n* клиент не уверен, сможет ли прийти\n\nother_question\n\n* клиент задаёт любой вопрос \n* клиент просит уточнение\n\nother\n\n*невозможно определить\n\nПравила:\n\n2. Отвечай строго одним словом:\n   agreed\n   или\n   not_agreed\n   или\n   doubt\n   или\n   other_question\n   или\n   other\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "3c2233c2-691c-4a52-a6ea-99545273ab81",
+      "name": "AI: классификатор (details)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1216,
+        1392
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "id": "4dd95a92-4216-4ef5-9b1b-f86fceed52b2",
+      "name": "DeepSeek: классификатор (details)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -1216,
+        1552
+      ],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YRNER6ASeGb1i8yE",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $input.first().json.text }}",
+                    "rightValue": "agreed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "det-agreed-001"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "согласен"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $input.first().json.text }}",
+                    "rightValue": "other_question",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "det-other-001"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "другой вопрос"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "cbe6b056-f419-499d-b08b-e5ee0107a373",
+                    "leftValue": "={{ $input.first().json.text }}",
+                    "rightValue": "doubt",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cомневается"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $input.first().json.text }}",
+                    "rightValue": "not_agreed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "det-not-agreed-001"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "не согласен"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "4208cb6d-b6fa-4505-8ac9-cfc83a684b21",
+                    "leftValue": "={{ $input.first().json.text }}",
+                    "rightValue": "other",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "other"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "32d5167d-1d4f-4e74-8a80-9223338b575b",
+      "name": "Switch: намерение (details)",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -624,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Перефразируй шаблон — замени МАКСИМУМ 1-2 слова на синонимы.\nСсылки (https://...) оставляй ТОЧНО как есть.\nСтруктуру и смысл не менять.\nОтвечай ТОЛЬКО готовым текстом, без пояснений.\n\nШаблон:\nЗаписала тебя, вступай тогда в закрытый чат встречи, туда вся информация придёт и можно будет с другими участницами познакомиться - https://t.me/+a5hdQuzd1u84Mzky"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "b311ff31-fe98-46ee-9ee5-46372aabe46b",
+      "name": "AI: перефразируем (agreed)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -416,
+        704
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "id": "8ffaaddc-3382-434b-9b71-58d8fcc30ac9",
+      "name": "DeepSeek: agreed",
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        864
+      ],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YRNER6ASeGb1i8yE",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.account_id }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fa75af91-9f09-4e2a-8814-c2a5bed0f446",
+      "name": "Отправляем ответ (agreed)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -112,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.account_id }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}"
+            },
+            {
+              "name": "text",
+              "value": "Напиши ещё, может быть у тебя есть запрос - например, какая-то задачка, которую решить актуально или вопрос\nМне будет ценно - я под это встречу адаптирую"
+            },
+            {
+              "name": "instant",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8fa62a9a-7263-4d03-b79a-ebe4b4f12685",
+      "name": "Отправляем запрос (ask_request)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        80,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Вход из webhook-обработчика').item.json.message_text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Ты классификатор. Клиента спросили есть ли у него запрос или вопрос, который он хотел бы разобрать на встрече.\n\nВарианты:\n- has_request: клиент озвучил конкретный запрос, тему или вопрос для встречи\n- no_request: у клиента нет запроса\n- question: любой другой вопрос\n- later: клиент говорит, что подумает над запросом или ответит позже\n\nОтвечай строго одним словом:\n   has_request\n   или\n   no_request\n   или\n   question\n   или\n   later"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "c73d0d89-5be8-4996-89ec-6c76014cd0a7",
+      "name": "AI: классификатор (ask_request)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -928,
+        2112
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "id": "7bd6ee8f-0fdc-4487-b9cf-0d56d2a3cb9b",
+      "name": "DeepSeek: классификатор (ask_request)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -928,
+        2288
+      ],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YRNER6ASeGb1i8yE",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $input.first().json.text }}",
+                    "rightValue": "has_request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ask-has-001"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "есть запрос"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $input.first().json.text }}",
+                    "rightValue": "no_request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ask-no-001"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "нет запроса"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $input.first().json.text }}",
+                    "rightValue": "question",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ask-q-001"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "другой вопрос"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "70dbd57d-6be5-478b-adae-8273a4c360ea",
+                    "leftValue": "={{ $input.first().json.text }}",
+                    "rightValue": "later",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "later"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "756ad051-5280-491d-8c09-da54028e28d5",
+      "name": "Switch: намерение (ask_request)",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -384,
+        2096
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Вход из webhook-обработчика').item.json.message_text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Клиент написал свой запрос или вопрос для встречи {input}.\nНапиши короткий тёплый ответ (1-2 предложения): подтверди что записала запрос и скажи что разберёте это на встрече. Используй смайлы 1 максимум.\nОбращайся на ты. Тон дружелюбный, живой.\nОтвечай ТОЛЬКО готовым текстом, без пояснений."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "288f2d7d-b88b-4b33-a227-abfa8ceea7af",
+      "name": "AI: отвечаем на запрос (has_request)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        96,
+        2080
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "id": "020c5942-ad0a-49b4-b818-ff084d103406",
+      "name": "DeepSeek: has_request",
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        96,
+        2256
+      ],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YRNER6ASeGb1i8yE",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.account_id }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7e5f5c11-068a-4b5e-a8ba-ec941a2e55f3",
+      "name": "Отправляем ответ (has_request)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        432,
+        2080
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.account_id }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}"
+            },
+            {
+              "name": "text",
+              "value": "Хорошо, тогда жду тебя на встрече🤍"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5287e14b-6dbc-4c95-9eec-e621ee5ffb51",
+      "name": "Отправляем ответ (no_request)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -672,
+        2592
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Вход из webhook-обработчика').item.json.message_text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Диалог уже идёт. Ответь на вопрос/вопросы на основе базы знаний одним сообщением.\n\nБаза знаний, где искать ответы:\n{{ $('Set: База знаний').item.json.kb }}\n\nКатегорически ЗАПРЕЩЕНО:\n- Здороваться\n- Отвечать на то, чего не спрашивали\n- Упоминать базу знаний(НИКТО НЕ ДОЛЖЕН ЗНАТЬ, ЧТО ТЫ НЕЙРОСЕТЬ)\n\nФормат ответа: Коротко и по сути. После ответа уточни, успевает ли на встречу(общение идет на ты)\n\nЕсли вопрос выходит за рамки базы — мягко уйди от ответа."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "5d676bed-545e-4dcc-add1-61b235e38a95",
+      "name": "AI: отвечаем на details",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -384,
+        1024
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.account_id }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8488dddd-016a-4415-a777-b7ab97d98230",
+      "name": "Отправляем ответ (details ask)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -48,
+        1024
+      ]
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        1168
+      ],
+      "id": "2b5b5a20-3a45-426f-9234-fc52224d828a",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YRNER6ASeGb1i8yE",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "id": "c039be8f-e343-412c-a6e1-25a9d5c0aafb",
+      "name": "DeepSeek: вопрос (ask_request)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        2464
+      ],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YRNER6ASeGb1i8yE",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.account_id }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d53059b8-867c-421d-b566-116ce234a0f7",
+      "name": "Отправляем ответ (вопрос ask_request)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        2432
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Вход из webhook-обработчика').item.json.message_text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Диалог уже идёт. Ответь на вопрос/вопросы на основе базы знаний одним сообщением.\n\nБаза знаний, где искать ответы:\n{{ $('Set: База знаний').item.json.kb }}\n\nКатегорически ЗАПРЕЩЕНО:\n- Здороваться\n- Отвечать на то, чего не спрашивали\n- Упоминать базу знаний(НИКТО НЕ ДОЛЖЕН ЗНАТЬ, ЧТО ТЫ НЕЙРОСЕТЬ)\n\nФормат ответа: Коротко и по сути.\n\nЕсли вопрос выходит за рамки базы — мягко уйди от ответа."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "6a3213d5-9d79-4513-b27f-69fe1590aa54",
+      "name": "AI: отвечаем на greetings",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        80,
+        256
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Вход из webhook-обработчика').item.json.message_text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Диалог уже идёт. Ответь на вопрос/вопросы на основе базы знаний одним сообщением.\n\nБаза знаний, где искать ответы:\n{{ $('Set: База знаний').item.json.kb }}\n\nКатегорически ЗАПРЕЩЕНО:\n- Здороваться\n- Отвечать на то, чего не спрашивали\n- Упоминать базу знаний(НИКТО НЕ ДОЛЖЕН ЗНАТЬ, ЧТО ТЫ НЕЙРОСЕТЬ)\n\nФормат ответа: 1. Ответ, коротко и по сути, обращаемся на ты. Со следующей строки(между строками не должно быть пустых абзацев) - уточни - есть что-то, что хочется разобрать на встрече? Запрос или вопрос какой-то?\n\nЕсли вопрос выходит за рамки базы — мягко уйди от ответа.\n\nЕсли вопрос выходит за рамки базы — мягко уйди от ответа."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "cbd84a14-63c2-4871-bfdd-b22239b5460b",
+      "name": "AI: отвечаем на ask_request",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -96,
+        2432
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c9350f5d-1870-4791-ae30-417e5a2e1605",
+              "name": "kb",
+              "value": "---\nКто ты такая?/Мы знакомы? → Ты у меня в контактах была, думала мы на мероприятиях встречались🙌\nЯ психолог, помогаю решения принимать сильные. В основном ко мне обращаются, чтобы по финансам вырасти, так как большой бэкграунд предпринимательский личный - и продюсерский центр, и консалтинговое агентство, и офлайн бизнес\nПри этом я в первую очередь помогаю прийти к спокойному и счастливому состоянию🤍\nА вот кейсы, если что: https://t.me/+uClTAxYJIH45MTQy\n---\nОткуда у вас мой контакт? → Нашла твой контакт у себя, может быть пересекались на мероприятиях) \n---\nНа каких именно мероприятиях пересекались? → Честно, точно не вспомню, был твой контакт, решила написать.\n---\nГде встреча?/В каком городе? → Встреча пройдет онлайн в Яндекс Телемосте)   \n---\nВ каком приложении? → Яндекс Телемост)   \n---\nСколько человек → Камерная обстановка, человек 15-20)   \n---\nСколько длится встреча? → Часа 1,5-2 максимум)   \n---\nЧто такое нестандартное мышление? → Это в хорошем смысле 😄  \n---\nПочему решили что мне нужно? → Я не решаю за вас 🤛🏻 Просто предлагаю присоединиться)   \n---\nКак зарегистрироваться? → Встреча онлайн, я могу записать.\n---\nКогда встреча? → В среду 8.07, 18:00мск\n---\nСпрашивает про запрос/вопрос → Это то, что волнует тебя лично и что бы ты хотела обсудить на встрече.\n---\nЧто вы имеете в виду под кризисом? → Это период, когда рост замедляется и старые инструменты перестают работать.\n---\nБудет ли запись? → Не уверена, поэтому лучше быть онлайн) Но если будет обязательно скину \n---\nКто будет на встрече? → Только девушки, близкие по духу и ценностям\n---\nКакая цена?/Сколько стоит? → Встреча бесплатная.\n\n",
+              "type": "string"
+            },
+            {
+              "id": "f0c18aae-542e-4c37-99eb-e3f3e69d869b",
+              "name": "state",
+              "value": "={{ $json.Статус }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1984,
+        1408
+      ],
+      "id": "6b72c038-757b-40ef-92d8-ed987f5478c5",
+      "name": "Set: База знаний"
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -368,
+        1456
+      ],
+      "id": "7bc418c8-f386-4f94-8179-50eab2ec14f2",
+      "name": "DeepSeek Chat Model1",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YRNER6ASeGb1i8yE",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Вход из webhook-обработчика').item.json.message_text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Диалог уже идёт. Ты получил входящий текст. Клиент сомневается сможет ли прийти на встречу(опционально может задать еще какой-то вопрос). Сначала ответь на вопрос(если есть), используя базу знаний. Со следующей строки(/n/n) ответь на сомнение - пониманием и пригласи в закрытый чат, там будет вся информация о встрече - https://t.me/+a5hdQuzd1u84Mzky. Сообщи, что будешь рада видеть на встрече, если сможет присутствовать.\n\nКатегорически ЗАПРЕЩЕНО:\n- Здороваться\n- Отвечать на то, чего не спрашивали\n\nБаза знаний, где искать ответы:\n{{ $('Set: База знаний').item.json.kb }}\n\nФормат ответа: коротко и по сути, обращаемся на ты. \n\nЕсли вопрос выходит за рамки базы — мягко уйди от ответа."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "86d17d42-ca06-437d-bf20-19dd168ce82e",
+      "name": "AI: отвечаем на doubt",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -368,
+        1312
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.account_id }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0d36e72e-9f23-495f-95b4-4ecfb5b7b89d",
+      "name": "Отправляем ответ (doubt)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -48,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const templates = [\n  `Смотрите, это встреча для мужчин-предпринимателей, которые привыкли принимать решения и держать на себе большую ответственность.\n\nБудем говорить про следующий уровень роста — когда привычные инструменты уже не дают того эффекта, что раньше.\nИспользуем несколько методов, которые помогают увидеть свои слепые зоны, ограничения и возможности, которые обычно остаются вне поля внимания.\nЧасто именно там находятся решения, способные дать самый большой результат.\n\nФормат закрытый, онлайн, около 2х часов. Успеваете в четверг 23.07 в 19 мск?`,\n\n  `Смотрите, это встреча для мужчин-предпринимателей — тех, кто привык принимать решения и нести на себе большую ответственность.\n\nПоговорим про следующий уровень роста — когда привычные инструменты уже не дают того эффекта, что раньше.\nИспользуем несколько методов, которые помогают увидеть слепые зоны, ограничения и возможности, обычно остающиеся вне поля внимания.\nЧасто именно там находятся решения, дающие самый большой результат.\n\nФормат закрытый, онлайн, около 2 часов. Успеваете в четверг, 23.07, в 19мск?`,\n\n  `Это встреча для мужчин-предпринимателей, которые привыкли принимать решения и держать на себе большую ответственность.\n\nБудем говорить о следующем уровне роста — о моменте, когда привычные инструменты уже не дают того эффекта, что раньше.\nИспользуем несколько методов, которые помогают увидеть свои слепые зоны, ограничения и возможности, обычно остающиеся вне поля внимания.\nЧасто именно там и находятся решения, способные дать самый большой результат.\n\nФормат — закрытый, онлайн, около 2х часов. Успеваете в четверг 23.07 в 19:00 мск?`,\n\n  `Смотрите, эта встреча — для мужчин-предпринимателей, которые привыкли сами принимать решения и нести большую ответственность.\n\nБудем говорить про следующий уровень роста: когда привычные инструменты уже не дают того эффекта, что раньше.\nИспользуем несколько методов, помогающих увидеть свои слепые зоны, ограничения и возможности, которые обычно остаются вне поля внимания.\nЧасто именно там находятся решения, способные дать самый большой результат.\n\nФормат закрытый, онлайн, примерно 2 часа. Успеваете в четверг, 23.07, в 19 мск?`,\n\n  `Смотрите, это встреча для мужчин-предпринимателей, которые привыкли принимать решения и держать на себе большую ответственность.\n\nБудем говорить про следующий уровень роста — когда привычные инструменты уже не дают того эффекта, что раньше.\nИспользуем несколько методов, которые помогают увидеть свои слепые зоны, ограничения и возможности, обычно остающиеся вне поля внимания.\nЧасто именно там и находятся решения, способные дать самый большой результат.\n\nФормат закрытый, онлайн, около 2х часов. Успеваете в четверг 23.07 в 19-00 мск?`,\n];\n\nconst template = templates[Math.floor(Math.random() * templates.length)];\nconst text = template;\nreturn [{\n  json: {\n    ...$input.first().json,\n    text\n  }\n}];"
+      },
+      "id": "da04ede1-5512-4afd-9a3b-7875e6079eb9",
+      "name": "Выбираем шаблон greetings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/react",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.account_id }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}"
+            },
+            {
+              "name": "message_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.message_id }}"
+            },
+            {
+              "name": "username",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.from_username }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "de1047a5-a4ff-410d-b638-94109f8e7406",
+      "name": "Ставим реакцию ❤ (later)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -144,
+        2224
+      ]
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {
+          "maxRetries": 3
+        }
+      },
+      "id": "01ffcd7b-2234-4c90-b297-417225ea5908",
+      "name": "DeepSeek: ответ на вопрос",
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        80,
+        448
+      ],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YRNER6ASeGb1i8yE",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk",
+          "mode": "list",
+          "cachedResultName": "Moscow 6304",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 174905087,
+          "mode": "list",
+          "cachedResultName": "Участники",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_mq5_7YlEJtxejO6Kz68DmiMAYHQioY-vTwZBNT3skk/edit#gid=174905087"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "UserID",
+              "lookupValue": "={{ $json.chat_id }}"
+            }
+          ]
+        },
+        "options": {
+          "returnFirstMatch": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -2224,
+        1408
+      ],
+      "id": "d2764fd1-2a89-4b94-b821-c80bdccdf91f",
+      "name": "Получаем статус из бд",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.account_id }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "66b209b9-0812-4f3f-a30a-7dbe90c0cc40",
+      "name": "Отправляем ответ greetings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig",
+          "mode": "list",
+          "cachedResultName": "таблица для рассылки",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Клиенты",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "User_id": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}",
+            "Пометки": "странный",
+            "row_number": 0,
+            "Ответы": "={{ ($('Получаем статус из бд').item.json['Ответы'] ? $('Получаем статус из бд').item.json['Ответы'] + '\\n' : '') + new Date().toLocaleString('sv-SE', {timeZone:'Europe/Moscow'}).substring(0,16) + ' 👤 ' + $('Вход из webhook-обработчика').item.json.message_text + ' [ответ не отправлен]'  }}"
+          },
+          "matchingColumns": [
+            "User_id"
+          ],
+          "schema": [
+            {
+              "id": "User_id",
+              "displayName": "User_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Username",
+              "displayName": "Username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Имя",
+              "displayName": "Имя",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Имя(Диалог)",
+              "displayName": "Имя(Диалог)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ЦА",
+              "displayName": "ЦА",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Пол",
+              "displayName": "Пол",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Статус",
+              "displayName": "Статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Запрос",
+              "displayName": "Запрос",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Аккаунт",
+              "displayName": "Аккаунт",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Дата контакта",
+              "displayName": "Дата контакта",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Ответы",
+              "displayName": "Ответы",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Пометки",
+              "displayName": "Пометки",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -368,
+        1632
+      ],
+      "id": "a40f4875-fdeb-480e-9cad-2d2b3bb3b320",
+      "name": "Update row in sheet",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "User_id": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}",
+            "Дата контакта": "={{ new Date().toLocaleString('sv-SE', {timeZone: 'Europe/Moscow'}).substring(0,16) }}",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "User_id"
+          ],
+          "schema": [
+            {
+              "id": "User_id",
+              "displayName": "User_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Username",
+              "displayName": "Username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Имя",
+              "displayName": "Имя",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Имя(Диалог)",
+              "displayName": "Имя(Диалог)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ЦА",
+              "displayName": "ЦА",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Телефон",
+              "displayName": "Телефон",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Пол",
+              "displayName": "Пол",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Статус",
+              "displayName": "Статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Запрос",
+              "displayName": "Запрос",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Аккаунт",
+              "displayName": "Аккаунт",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Дата контакта",
+              "displayName": "Дата контакта",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ответы",
+              "displayName": "Ответы",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "96ad37e3-e927-4455-aaab-5b6e6040a055",
+      "name": "Обновляем GSheets (details ask)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        192,
+        1024
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "User_id": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}",
+            "Статус": "={{ $json.stage }}",
+            "Дата контакта": "={{ new Date().toLocaleString('sv-SE', {timeZone: 'Europe/Moscow'}).substring(0,16) }}",
+            "row_number": 0,
+            "Username": ""
+          },
+          "matchingColumns": [
+            "User_id"
+          ],
+          "schema": [
+            {
+              "id": "User_id",
+              "displayName": "User_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Username",
+              "displayName": "Username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Имя",
+              "displayName": "Имя",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Имя(Диалог)",
+              "displayName": "Имя(Диалог)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ЦА",
+              "displayName": "ЦА",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Телефон",
+              "displayName": "Телефон",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Пол",
+              "displayName": "Пол",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Статус",
+              "displayName": "Статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Запрос",
+              "displayName": "Запрос",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Аккаунт",
+              "displayName": "Аккаунт",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Дата контакта",
+              "displayName": "Дата контакта",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ответы",
+              "displayName": "Ответы",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "31f185e1-da46-48ba-aa46-aef864ac0dbb",
+      "name": "Обновляем GSheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1152,
+        1600
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "436390e4-756b-4d37-9c5b-8e75bab0ab81",
+              "name": "stage",
+              "value": "ask_request",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        304,
+        704
+      ],
+      "id": "6bd7dfc5-c100-430f-8d38-3490f554fa0e",
+      "name": "Stage->ask_request"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "436390e4-756b-4d37-9c5b-8e75bab0ab81",
+              "name": "stage",
+              "value": "doubt",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        176,
+        1312
+      ],
+      "id": "15398d90-3ec2-447d-ad40-6cc496896747",
+      "name": "Stage->doubt"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "436390e4-756b-4d37-9c5b-8e75bab0ab81",
+              "name": "stage",
+              "value": "refused",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        192,
+        1760
+      ],
+      "id": "6c77aee9-fa04-4600-8c62-216a3eee1087",
+      "name": "Stage->refused"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "436390e4-756b-4d37-9c5b-8e75bab0ab81",
+              "name": "stage",
+              "value": "no_request",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        656,
+        2608
+      ],
+      "id": "eaa63696-6a9f-4359-a329-b64becb1b01e",
+      "name": "Stage->no_request"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "436390e4-756b-4d37-9c5b-8e75bab0ab81",
+              "name": "stage",
+              "value": "has_request",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        2080
+      ],
+      "id": "72d061db-918c-4290-9fdc-b06e3b2b279e",
+      "name": "Stage->has_request"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1klQ-UYUhEyQsIABQV1XgpBM2zdMmRYNA-oFo_ITZ6Ig"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "User_id": "={{ $('Вход из webhook-обработчика').item.json.chat_id }}",
+            "Статус": "={{ $json.stage }}",
+            "Дата контакта": "={{ new Date().toLocaleString('sv-SE', {timeZone: 'Europe/Moscow'}).substring(0,16) }}",
+            "row_number": 0,
+            "Username": ""
+          },
+          "matchingColumns": [
+            "User_id"
+          ],
+          "schema": [
+            {
+              "id": "User_id",
+              "displayName": "User_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Username",
+              "displayName": "Username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Имя",
+              "displayName": "Имя",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Имя(Диалог)",
+              "displayName": "Имя(Диалог)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ЦА",
+              "displayName": "ЦА",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Телефон",
+              "displayName": "Телефон",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Пол",
+              "displayName": "Пол",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Статус",
+              "displayName": "Статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Запрос",
+              "displayName": "Запрос",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Аккаунт",
+              "displayName": "Аккаунт",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Дата контакта",
+              "displayName": "Дата контакта",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ответы",
+              "displayName": "Ответы",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "5728ba74-2ff2-4309-aa60-ab6fd48a01ce",
+      "name": "Обновляем GSheets1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        720,
+        16
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Вход из webhook-обработчика": {
+      "main": [
+        [
+          {
+            "node": "Получаем статус из бд",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: состояние": {
+      "main": [
+        [
+          {
+            "node": "AI: классификатор намерения",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI: классификатор (details)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI: классификатор (ask_request)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek: классификатор": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: классификатор намерения",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: классификатор намерения": {
+      "main": [
+        [
+          {
+            "node": "Switch: намерение",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: намерение": {
+      "main": [
+        [
+          {
+            "node": "Выбираем шаблон greetings",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI: отвечаем на greetings",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Выбираем шаблон (не интересно)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Выбираем шаблон (не интересно)": {
+      "main": [
+        [
+          {
+            "node": "Отправляем ответ (не интересно)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Отправляем ответ (не интересно)": {
+      "main": [
+        [
+          {
+            "node": "Stage->refused",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Отправляем детали встречи": {
+      "main": [
+        [
+          {
+            "node": "Обновляем GSheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek: классификатор (details)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: классификатор (details)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: классификатор (details)": {
+      "main": [
+        [
+          {
+            "node": "Switch: намерение (details)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: намерение (details)": {
+      "main": [
+        [
+          {
+            "node": "AI: перефразируем (agreed)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI: отвечаем на details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI: отвечаем на doubt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Выбираем шаблон (не интересно)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek: agreed": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: перефразируем (agreed)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: перефразируем (agreed)": {
+      "main": [
+        [
+          {
+            "node": "Отправляем ответ (agreed)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Отправляем ответ (agreed)": {
+      "main": [
+        [
+          {
+            "node": "Отправляем запрос (ask_request)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Отправляем запрос (ask_request)": {
+      "main": [
+        [
+          {
+            "node": "Stage->ask_request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek: классификатор (ask_request)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: классификатор (ask_request)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: классификатор (ask_request)": {
+      "main": [
+        [
+          {
+            "node": "Switch: намерение (ask_request)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: намерение (ask_request)": {
+      "main": [
+        [
+          {
+            "node": "AI: отвечаем на запрос (has_request)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Отправляем ответ (no_request)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI: отвечаем на ask_request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ставим реакцию ❤ (later)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek: has_request": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: отвечаем на запрос (has_request)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: отвечаем на запрос (has_request)": {
+      "main": [
+        [
+          {
+            "node": "Отправляем ответ (has_request)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Отправляем ответ (has_request)": {
+      "main": [
+        [
+          {
+            "node": "Stage->has_request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Отправляем ответ (no_request)": {
+      "main": [
+        [
+          {
+            "node": "Stage->no_request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: отвечаем на details": {
+      "main": [
+        [
+          {
+            "node": "Отправляем ответ (details ask)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: отвечаем на details",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek: вопрос (ask_request)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: отвечаем на ask_request",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: отвечаем на greetings": {
+      "main": [
+        [
+          {
+            "node": "Отправляем ответ greetings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: отвечаем на ask_request": {
+      "main": [
+        [
+          {
+            "node": "Отправляем ответ (вопрос ask_request)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: База знаний": {
+      "main": [
+        [
+          {
+            "node": "Switch: состояние",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: отвечаем на doubt",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: отвечаем на doubt": {
+      "main": [
+        [
+          {
+            "node": "Отправляем ответ (doubt)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Отправляем ответ (doubt)": {
+      "main": [
+        [
+          {
+            "node": "Stage->doubt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Выбираем шаблон greetings": {
+      "main": [
+        [
+          {
+            "node": "Отправляем детали встречи",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek: ответ на вопрос": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: отвечаем на greetings",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Получаем статус из бд": {
+      "main": [
+        [
+          {
+            "node": "Set: База знаний",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Отправляем ответ greetings": {
+      "main": [
+        [
+          {
+            "node": "Выбираем шаблон greetings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Отправляем ответ (details ask)": {
+      "main": [
+        [
+          {
+            "node": "Обновляем GSheets (details ask)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage->ask_request": {
+      "main": [
+        [
+          {
+            "node": "Обновляем GSheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage->doubt": {
+      "main": [
+        [
+          {
+            "node": "Обновляем GSheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage->refused": {
+      "main": [
+        [
+          {
+            "node": "Обновляем GSheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage->no_request": {
+      "main": [
+        [
+          {
+            "node": "Обновляем GSheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage->has_request": {
+      "main": [
+        [
+          {
+            "node": "Обновляем GSheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "c8e097bd-c1db-4164-8fe2-55be82324467",
+  "activeVersionId": null,
+  "versionCounter": 44,
+  "triggerCount": 0,
+  "tags": [
+    {
+      "updatedAt": "2026-07-10T11:52:53.636Z",
+      "createdAt": "2026-07-10T11:52:53.636Z",
+      "id": "UEdNW1SrBJ1c8dzY",
+      "name": "AnastyMEETING"
+    }
+  ],
+  "shared": [
+    {
+      "updatedAt": "2026-07-12T08:33:24.851Z",
+      "createdAt": "2026-07-12T08:33:24.851Z",
+      "role": "workflow:owner",
+      "workflowId": "5h35dZhtGH9yhgbb",
+      "projectId": "FuB2P81JUmVyRc9b",
+      "project": {
+        "updatedAt": "2026-07-10T11:52:37.043Z",
+        "createdAt": "2026-07-10T11:51:07.140Z",
+        "id": "FuB2P81JUmVyRc9b",
+        "name": "Anna Anna@gmail.com <anna@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      }
+    }
+  ]
+}

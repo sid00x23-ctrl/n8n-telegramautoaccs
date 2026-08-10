@@ -459,25 +459,6 @@ async def commenting_delete_account(account_id: str, request: Request):
     return await _proxy("DELETE", f"/commenting/accounts/{account_id}")
 
 
-@app.get("/api/commenting/channels")
-async def get_commenting_channels(request: Request):
-    require_auth(request)
-    return await _proxy("GET", "/commenting/channels")
-
-
-@app.post("/api/commenting/channels")
-async def add_commenting_channel(request: Request):
-    require_auth(request)
-    body = await request.json()
-    return await _proxy("POST", "/commenting/channels", json_body=body)
-
-
-@app.delete("/api/commenting/channels/{channel_id}")
-async def remove_commenting_channel(channel_id: str, request: Request):
-    require_auth(request)
-    return await _proxy("DELETE", f"/commenting/channels/{channel_id}")
-
-
 # ── Google Sheets contacts ────────────────────────────────────────────────────
 
 _SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets"

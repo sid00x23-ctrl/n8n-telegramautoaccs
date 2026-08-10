@@ -12,7 +12,6 @@ from cli import CLI
 from config import settings
 from manager import AccountManager
 from proxy_manager import ProxyPool
-from commenting_channels import ChannelManager
 
 console = Console()
 
@@ -66,9 +65,6 @@ async def main():
         sessions_dir=Path("commenting_sessions"),
         sent_chats_file=Path("commenting_sent_chats.json"),
     )
-    channel_manager = ChannelManager(
-        channels_file=Path("commenting_channels.json"),
-    )
 
     if HEADLESS:
         # Серверный режим: сначала поднимаем HTTP-сервер, потом подключаем аккаунты фоном.
@@ -76,7 +72,7 @@ async def main():
         logging.getLogger().setLevel(logging.INFO)
         logging.getLogger("telethon").setLevel(logging.WARNING)
 
-        app = create_app(manager, proxy_pool, commenting_manager, channel_manager)
+        app = create_app(manager, proxy_pool, commenting_manager)
         config = uvicorn.Config(app, host=settings.SERVICE_HOST, port=settings.SERVICE_PORT,
                                 log_level="warning", access_log=False)
         server = uvicorn.Server(config)
@@ -129,7 +125,7 @@ async def main():
         f"[dim]http://{settings.SERVICE_HOST}:{settings.SERVICE_PORT}[/dim]"
     )
 
-    app = create_app(manager, proxy_pool, commenting_manager, channel_manager)
+    app = create_app(manager, proxy_pool, commenting_manager)
     config = uvicorn.Config(app, host=settings.SERVICE_HOST, port=settings.SERVICE_PORT,
                             log_level="warning", access_log=False)
     server = uvicorn.Server(config)

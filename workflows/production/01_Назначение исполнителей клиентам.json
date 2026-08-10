@@ -1,0 +1,477 @@
+{
+  "updatedAt": "2026-08-06T08:43:57.897Z",
+  "createdAt": "2026-07-29T09:41:00.786Z",
+  "id": "9OuVXP5wdzejSzQW",
+  "name": "01_Назначение исполнителей клиентам",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI",
+          "mode": "list",
+          "cachedResultName": "SPB 2267",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 504117681,
+          "mode": "list",
+          "cachedResultName": "Участники",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit#gid=504117681"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Статус",
+              "lookupValue": "new"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3f62a08a-4cbb-4453-801f-0cf0cd25493d",
+      "name": "Читаем новых клиентов",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        368,
+        0
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 3,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI",
+          "mode": "list",
+          "cachedResultName": "SPB 2267",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 504117681,
+          "mode": "list",
+          "cachedResultName": "Участники",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit#gid=504117681"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Статус": "assigned",
+            "Назначен": "={{ $json['Дата_контакта'] }}",
+            "Дата контакта": "={{ $json['Дата_контакта'] }}",
+            "Аккаунт": "={{ $json.executor_bot_id }}",
+            "User ID": "={{ $json['User ID'] }}"
+          },
+          "matchingColumns": [
+            "User ID"
+          ],
+          "schema": [
+            {
+              "id": "Username",
+              "displayName": "Username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Имя",
+              "displayName": "Имя",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Фамилия",
+              "displayName": "Фамилия",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Имя(для рассылки)",
+              "displayName": "Имя(для рассылки)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Пол",
+              "displayName": "Пол",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Профессия",
+              "displayName": "Профессия",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Статус",
+              "displayName": "Статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Назначен",
+              "displayName": "Назначен",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Дата контакта",
+              "displayName": "Дата контакта",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Аккаунт",
+              "displayName": "Аккаунт",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Ссылка на профиль",
+              "displayName": "Ссылка на профиль",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Источник",
+              "displayName": "Источник",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Дата последнего сообщения (МСК)",
+              "displayName": "Дата последнего сообщения (МСК)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "a8960742-d843-40cb-83a0-0466a03955c4",
+      "name": "Обновляем статус в таблице",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        768,
+        0
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 3,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:8000/accounts",
+        "options": {}
+      },
+      "id": "bb882071-48a7-4c2c-857d-e48b90b758aa",
+      "name": "Получаем аккаунты",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Схлопываем все items аккаунтов в один item с массивом\nconst accounts = $input.all().map(item => item.json);\nreturn [{ json: { accounts } }];"
+      },
+      "id": "0af4b88b-0040-4a05-92c2-31161132c141",
+      "name": "Агрегируем аккаунты",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "30 10 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 12 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "30 13 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 15 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "30 16 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * *"
+            }
+          ]
+        }
+      },
+      "id": "48c63a92-f90a-49ca-94d4-1ac1c2c3bbb1",
+      "name": "По расписанию",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        64,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "hq4JulwMKDrmHZD8",
+          "mode": "id",
+          "cachedResultUrl": "/n8n/workflow/hq4JulwMKDrmHZD8"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "9f9ed4f7-a2f0-48db-a6f5-8c0e32bdcb08",
+      "name": "Запускаем планировщик",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Берём только доступные аккаунты (authorized + не под спам-баном)\nconst accountsList = $('Агрегируем аккаунты').item.json.accounts || [];\nconst available = accountsList.filter(a => a.available === true && a.mailing_enabled !== false);\n\nif (!available.length) {\n  throw new Error('Нет доступных аккаунтов в сервисе (все авторизованы или под спам-баном)');\n}\n\n// Клиенты из GSheets\nconst clients = $input.all().filter(c =>\n  String(c.json['User ID'] || '').trim() !== ''\n);\n\nif (!clients.length) {\n  console.log('Нет новых клиентов для назначения');\n  return [];\n}\n\n// Берём ровно столько клиентов, сколько доступных аккаунтов\nconst toAssign = clients.slice(0, available.length);\nconst now = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Moscow' }).substring(0, 16);\n\nconsole.log(`Назначаем: ${toAssign.length} клиентов на ${available.length} аккаунтов`);\n\nreturn toAssign.map((c, i) => ({\n  json: {\n    ...c.json,\n    executor_bot_id: available[i].account_id,\n    Аккаунт: available[i].account_id,\n    Статус: 'assigned',\n    Дата_контакта: now,\n  }\n}));"
+      },
+      "id": "99973ac9-46dc-470d-8be1-9fce2a80508e",
+      "name": "Назначение аккаунтов",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Читаем новых клиентов": {
+      "main": [
+        [
+          {
+            "node": "Назначение аккаунтов",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Получаем аккаунты": {
+      "main": [
+        [
+          {
+            "node": "Агрегируем аккаунты",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Агрегируем аккаунты": {
+      "main": [
+        [
+          {
+            "node": "Читаем новых клиентов",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "По расписанию": {
+      "main": [
+        [
+          {
+            "node": "Получаем аккаунты",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Обновляем статус в таблице": {
+      "main": [
+        [
+          {
+            "node": "Запускаем планировщик",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Назначение аккаунтов": {
+      "main": [
+        [
+          {
+            "node": "Обновляем статус в таблице",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner",
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Moscow"
+  },
+  "staticData": {
+    "node:По расписанию": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "0205a22e-2bbd-46b0-a338-10230d9419e2",
+  "activeVersionId": "0205a22e-2bbd-46b0-a338-10230d9419e2",
+  "versionCounter": 42,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-07-29T09:41:00.795Z",
+      "createdAt": "2026-07-29T09:41:00.795Z",
+      "role": "workflow:owner",
+      "workflowId": "9OuVXP5wdzejSzQW",
+      "projectId": "FuB2P81JUmVyRc9b",
+      "project": {
+        "updatedAt": "2026-07-10T11:52:37.043Z",
+        "createdAt": "2026-07-10T11:51:07.140Z",
+        "id": "FuB2P81JUmVyRc9b",
+        "name": "Anna Anna@gmail.com <anna@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      }
+    }
+  ]
+}

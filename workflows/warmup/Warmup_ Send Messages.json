@@ -1,0 +1,511 @@
+{
+  "updatedAt": "2026-08-01T12:35:25.987Z",
+  "createdAt": "2026-07-27T09:41:19.289Z",
+  "id": "EieFvlpw5OuAUoQ7",
+  "name": "Warmup: Send Messages",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1WgMqHd8i6bXXp_PN-OQpD9NJkFDuJxW3uZDHlIJ297M",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "warmup_pairs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WgMqHd8i6bXXp_PN-OQpD9NJkFDuJxW3uZDHlIJ297M/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "w2-gs",
+      "name": "Read Warmup Pairs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        144,
+        -384
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\n\nconst accountsItem = items.find(i => Array.isArray(i.json.accounts));\nconst allAccounts = accountsItem?.json?.accounts || [];\nconst accountMap = {};\nfor (const acc of allAccounts) {\n  accountMap[acc.account_id] = acc;\n}\nconst pairs = items.filter(i => !Array.isArray(i.json.accounts)).map(i => i.json);\n\nreturn pairs\n  .filter(p => String(p.status).trim().toLowerCase() === 'active')\n  .filter(p => !p.next_send_time || new Date(p.next_send_time) <= now)\n  .filter(p => {\n    const initiator = accountMap[p.initiator_id];\n    const partner = accountMap[p.partner_id];\n    return initiator?.warmup_initiator === true && partner?.warmup_receiver === true;\n  })\n  .map(p => {\n    // last_sender === initiator_id означает, что следующим пишет partner, и наоборот\n    const partnerSends = (p.last_sender === p.initiator_id);\n\n    const sender_id = partnerSends ? p.partner_id : p.initiator_id;\n    const receiver_username = partnerSends ? p.initiator_id : p.partner_id;\n\n    const nextSendTime = new Date(now.getTime() + (45 + Math.random() * 30) * 60000).toISOString();\n\n    return {\n      json: {\n        pair_id: p.pair_id,\n        initiator_id: p.initiator_id,\n        partner_id: p.partner_id,\n        sender_id,\n        receiver_username, // <-- используем это в узле отправки сообщения\n        next_send_time_new: nextSendTime,\n        last_message_text: p.last_message_text || 'привет',\n        row_number: p.row_number,\n      }\n    };\n  });"
+      },
+      "id": "w2-code",
+      "name": "Find Due Pairs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Собеседник написал: \"' + $json.last_message_text + '\"\\n\\nНапиши короткий ответ (1-3 предложения). Продолжай разговор естественно.' }}",
+        "options": {
+          "systemMessage": "Ты специалист по астрономии, физике, космосу,устройству солнечной системы. Ведёшь неформальную переписку в Telegram с коллегой-практиком. Пиши коротко, по-человечески. "
+        }
+      },
+      "id": "w2-llm",
+      "name": "Generate Reply",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        784,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "w2-ds",
+      "name": "DeepSeek Model 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -48
+      ],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YRNER6ASeGb1i8yE",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Find Due Pairs').item.json.sender_id }}"
+            },
+            {
+              "name": "lastsender_id",
+              "value": "={{ $('Find Due Pairs').item.json.receiver_username }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "w2-send",
+      "name": "Send Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1088,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1WgMqHd8i6bXXp_PN-OQpD9NJkFDuJxW3uZDHlIJ297M",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "warmup_pairs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WgMqHd8i6bXXp_PN-OQpD9NJkFDuJxW3uZDHlIJ297M/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "pair_id": "={{ $('Find Due Pairs').item.json.pair_id }}",
+            "last_sender": "={{ $('Find Due Pairs').item.json.sender_id }}",
+            "last_message_text": "={{ $('Generate Reply').item.json.output.replace(/—/g, '-').trim() }}",
+            "next_send_time": "={{ $('Find Due Pairs').item.json.next_send_time_new }}",
+            "status": "active"
+          },
+          "matchingColumns": [
+            "pair_id"
+          ],
+          "schema": [
+            {
+              "id": "pair_id",
+              "displayName": "pair_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_sender",
+              "displayName": "last_sender",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_message_text",
+              "displayName": "last_message_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "next_send_time",
+              "displayName": "next_send_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "w2-upd4",
+      "name": "Update Pair State",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1248,
+        -224
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "w2-split",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        576,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "w2-sched",
+      "name": "Every 3 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -208,
+        -448
+      ]
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.floor(Math.random() * (180 - 5 + 1)) + 5 }}"
+      },
+      "id": "w2-wait",
+      "name": "Wait 5-180s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1408,
+        -224
+      ],
+      "webhookId": "703ef6b7-bcaf-4b56-8f8d-05a7e8ce9c4c"
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:8000/accounts",
+        "options": {}
+      },
+      "id": "w2-get-accs",
+      "name": "Get Accounts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -32,
+        -544
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "accounts",
+        "options": {}
+      },
+      "id": "w2-agg-accs",
+      "name": "Aggregate Accounts",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        144,
+        -544
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "w2-merge",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        336,
+        -480
+      ]
+    }
+  ],
+  "connections": {
+    "DeepSeek Model 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Reply",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reply": {
+      "main": [
+        [
+          {
+            "node": "Update Pair State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Due Pairs": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Generate Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Pair State": {
+      "main": [
+        [
+          {
+            "node": "Wait 5-180s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 3 Hours": {
+      "main": [
+        [
+          {
+            "node": "Read Warmup Pairs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5-180s": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Warmup Pairs": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get Accounts": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Accounts": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Find Due Pairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": {
+    "node:Every 15 Minutes": {
+      "recurrenceRules": []
+    },
+    "node:Every 60 Minutes": {
+      "recurrenceRules": []
+    },
+    "node:Every 3 Hours": {
+      "recurrenceRules": [
+        15
+      ]
+    }
+  },
+  "meta": null,
+  "pinData": {
+    "Every 3 Hours": [
+      {
+        "json": {
+          "timestamp": "2026-07-30T15:00:58.062-04:00",
+          "Readable date": "July 30th 2026, 3:00:58 pm",
+          "Readable time": "3:00:58 pm",
+          "Day of week": "Thursday",
+          "Year": "2026",
+          "Month": "July",
+          "Day of month": "30",
+          "Hour": "15",
+          "Minute": "00",
+          "Second": "58",
+          "Timezone": "America/New_York (UTC-04:00)"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "versionId": "0f2e4b0f-25d0-4a53-8787-f313b306bc51",
+  "activeVersionId": "195912b0-7f91-48f2-b857-ac102f5dfbac",
+  "versionCounter": 432,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-07-27T09:41:19.296Z",
+      "createdAt": "2026-07-27T09:41:19.296Z",
+      "role": "workflow:owner",
+      "workflowId": "EieFvlpw5OuAUoQ7",
+      "projectId": "FuB2P81JUmVyRc9b",
+      "project": {
+        "updatedAt": "2026-07-10T11:52:37.043Z",
+        "createdAt": "2026-07-10T11:51:07.140Z",
+        "id": "FuB2P81JUmVyRc9b",
+        "name": "Anna Anna@gmail.com <anna@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      }
+    }
+  ]
+}
