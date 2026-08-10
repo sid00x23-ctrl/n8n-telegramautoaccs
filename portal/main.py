@@ -551,6 +551,11 @@ async def dashboard():
     return FileResponse(STATIC_DIR / "dashboard.html")
 
 
+@app.get("/mailing", response_class=HTMLResponse)
+async def mailing():
+    return FileResponse(STATIC_DIR / "mailing.html")
+
+
 @app.get("/service", response_class=HTMLResponse)
 async def service():
     return FileResponse(STATIC_DIR / "service.html")
