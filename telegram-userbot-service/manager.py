@@ -186,7 +186,7 @@ class AccountManager:
     ):
         self._configs_file = configs_file or CONFIGS_FILE
         self._sent_chats_file = sent_chats_file or SENT_CHATS_FILE
-        self._sessions_dir = sessions_dir or self._sessions_dir
+        self._sessions_dir = sessions_dir or settings.SESSIONS_DIR
         self._sessions_dir.mkdir(parents=True, exist_ok=True)
 
         # account_id → TelegramClient
