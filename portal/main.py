@@ -564,3 +564,18 @@ async def service():
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_page():
     return FileResponse(STATIC_DIR / "chat.html")
+
+
+@app.get("/commenting", response_class=HTMLResponse)
+async def commenting():
+    return FileResponse(STATIC_DIR / "commenting.html")
+
+
+@app.get("/commenting/accounts", response_class=HTMLResponse)
+async def commenting_accounts():
+    return FileResponse(STATIC_DIR / "commenting_accounts.html")
+
+
+@app.get("/commenting/channels", response_class=HTMLResponse)
+async def commenting_channels():
+    return FileResponse(STATIC_DIR / "commenting_channels.html")

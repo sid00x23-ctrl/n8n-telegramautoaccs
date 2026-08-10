@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ai-tg-agent — Главная</title>
+  <title>ai-tg-agent — Комментинг</title>
   <link rel="stylesheet" href="/static/css/style.css" />
   <style>
     .header {
@@ -19,6 +19,13 @@
       padding: 0 24px;
       z-index: 100;
     }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .back-btn {
+      display: flex; align-items: center; gap: 6px;
+      color: var(--text-2); text-decoration: none; font-size: 14px;
+      transition: color .2s;
+    }
+    .back-btn:hover { color: var(--text); }
     .header-logo {
       display: flex;
       align-items: center;
@@ -76,11 +83,8 @@
 
     .cards-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 20px;
-    }
-    @media (max-width: 860px) {
-      .cards-grid { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 560px) {
       .cards-grid { grid-template-columns: 1fr; }
@@ -112,17 +116,17 @@
     .choice-card:hover::before { opacity: 1; }
     .choice-card:active { transform: translateY(-2px); }
 
-    /* Service card — cyan glow */
-    .card-service::before { background: radial-gradient(circle at 50% 0%, rgba(0,212,255,0.06) 0%, transparent 70%); }
-    .card-service:hover { box-shadow: 0 12px 40px rgba(0,212,255,0.12), var(--shadow); }
-    .card-service .card-icon-wrap { background: var(--primary-dim); border-color: rgba(0,212,255,0.2); }
+    /* Accounts card — cyan */
+    .card-accounts::before { background: radial-gradient(circle at 50% 0%, rgba(0,212,255,0.06) 0%, transparent 70%); }
+    .card-accounts:hover { box-shadow: 0 12px 40px rgba(0,212,255,0.12), var(--shadow); }
+    .card-accounts .card-icon-wrap { background: var(--primary-dim); border-color: rgba(0,212,255,0.2); }
+    .card-accounts:hover .card-arrow { color: var(--primary); }
 
-    /* n8n card — purple glow */
-    .card-n8n::before { background: radial-gradient(circle at 50% 0%, rgba(168,85,247,0.06) 0%, transparent 70%); }
-    .card-n8n:hover { box-shadow: 0 12px 40px rgba(168,85,247,0.12), var(--shadow); }
-    .card-n8n .card-icon-wrap { background: var(--purple-dim); border-color: rgba(168,85,247,0.2); }
-
-    .card-service:hover .card-arrow { color: var(--primary); }
+    /* Channels card — orange */
+    .card-channels::before { background: radial-gradient(circle at 50% 0%, rgba(249,115,22,0.06) 0%, transparent 70%); }
+    .card-channels:hover { box-shadow: 0 12px 40px rgba(249,115,22,0.12), var(--shadow); }
+    .card-channels .card-icon-wrap { background: rgba(249,115,22,0.12); border-color: rgba(249,115,22,0.25); }
+    .card-channels:hover .card-arrow { color: #f97316; }
 
     .card-icon-wrap {
       width: 56px; height: 56px;
@@ -133,7 +137,6 @@
       justify-content: center;
       flex-shrink: 0;
     }
-    .card-body {}
     .card-title {
       font-size: 20px;
       font-weight: 600;
@@ -155,34 +158,33 @@
       color: var(--text-3);
       transition: color .2s, gap .2s;
     }
-    .choice-card:hover .card-arrow {
-      gap: 10px;
-    }
-    .card-service:hover .card-arrow { color: var(--primary); }
-    .card-n8n:hover .card-arrow     { color: var(--purple); }
-
-    /* Commenting card — orange glow */
-    .card-commenting::before { background: radial-gradient(circle at 50% 0%, rgba(249,115,22,0.06) 0%, transparent 70%); }
-    .card-commenting:hover { box-shadow: 0 12px 40px rgba(249,115,22,0.12), var(--shadow); }
-    .card-commenting .card-icon-wrap { background: rgba(249,115,22,0.12); border-color: rgba(249,115,22,0.25); }
-    .card-commenting:hover .card-arrow { color: #f97316; }
+    .choice-card:hover .card-arrow { gap: 10px; }
   </style>
 </head>
 <body>
   <div class="bg-mesh"></div>
 
   <header class="header">
-    <div class="header-logo">
-      <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
-        <path d="M22 11.5l-8 4.5-4-2.25v5l4 2.25 8-4.5V11.5z" fill="url(#gh1)"/>
-        <defs>
-          <linearGradient id="gh1" x1="10" y1="11" x2="30" y2="22" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#00d4ff"/><stop offset="1" stop-color="#a855f7"/>
-          </linearGradient>
-        </defs>
-      </svg>
-      <span class="grad-text" style="font-weight:700">ai-tg-agent</span>
-      <span>/ Панель</span>
+    <div class="header-left">
+      <a href="/dashboard" class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 8H3M7 4l-4 4 4 4"/>
+        </svg>
+        Назад
+      </a>
+      <div style="width:1px;height:20px;background:var(--border)"></div>
+      <div class="header-logo">
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+          <path d="M22 11.5l-8 4.5-4-2.25v5l4 2.25 8-4.5V11.5z" fill="url(#ch1)"/>
+          <defs>
+            <linearGradient id="ch1" x1="10" y1="11" x2="30" y2="22" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#f97316"/><stop offset="1" stop-color="#a855f7"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span class="grad-text" style="font-weight:700">ai-tg-agent</span>
+        <span>/ Комментинг</span>
+      </div>
     </div>
     <div class="header-right">
       <div class="username-chip">
@@ -196,21 +198,23 @@
   <main class="main page">
     <div class="content">
       <div class="greeting fade-up">
-        <h2>Добро пожаловать<span id="greetUser"></span></h2>
+        <h2>Комментинг</h2>
         <p>Выберите раздел для работы</p>
       </div>
 
       <div class="cards-grid">
-        <a href="/mailing" class="card choice-card card-service fade-up delay-1">
+        <a href="/commenting/accounts" class="card choice-card card-accounts fade-up delay-1">
           <div class="card-icon-wrap">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 2L11 13"/>
-              <path d="M22 2L15 22l-4-9-9-4 20-7z"/>
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
             </svg>
           </div>
           <div class="card-body">
-            <div class="card-title">Рассылка</div>
-            <div class="card-desc">Аккаунты Telegram, диалоги и управление рассылками</div>
+            <div class="card-title">Аккаунты</div>
+            <div class="card-desc">Telegram-аккаунты для комментирования: подключение по QR или номеру телефона</div>
           </div>
           <div class="card-arrow">
             Открыть
@@ -220,37 +224,15 @@
           </div>
         </a>
 
-        <a href="/commenting" class="card choice-card card-commenting fade-up delay-2">
+        <a href="/commenting/channels" class="card choice-card card-channels fade-up delay-2">
           <div class="card-icon-wrap">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              <line x1="9" y1="10" x2="15" y2="10"/>
-              <line x1="9" y1="14" x2="13" y2="14"/>
+              <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
             </svg>
           </div>
           <div class="card-body">
-            <div class="card-title">Комментинг</div>
-            <div class="card-desc">Автоматические комментарии в Telegram-каналах и группах</div>
-          </div>
-          <div class="card-arrow">
-            Открыть
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 8h10M9 4l4 4-4 4"/>
-            </svg>
-          </div>
-        </a>
-
-        <a href="/n8n/" class="card choice-card card-n8n fade-up delay-3" id="n8nCard">
-          <div class="card-icon-wrap">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="7" width="4" height="10" rx="2"/>
-              <rect x="10" y="3" width="4" height="18" rx="2"/>
-              <rect x="18" y="9" width="4" height="8" rx="2"/>
-            </svg>
-          </div>
-          <div class="card-body">
-            <div class="card-title">n8n</div>
-            <div class="card-desc">Рабочие процессы автоматизации: воронки, хуки, рассылки и интеграции</div>
+            <div class="card-title">Каналы/Группы</div>
+            <div class="card-desc">Каналы и группы для автоматического комментирования: добавление по ссылке</div>
           </div>
           <div class="card-arrow">
             Открыть
@@ -269,9 +251,6 @@
     const data = await guardAuth();
 
     document.getElementById('usernameLabel').textContent = data.username;
-    document.getElementById('greetUser').textContent = `, ${data.username}`;
-
-    document.getElementById('n8nCard').href = data.n8n_url || '/n8n/';
 
     document.getElementById('logoutBtn').addEventListener('click', () => logout());
   </script>

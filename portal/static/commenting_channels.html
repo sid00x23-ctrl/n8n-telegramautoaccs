@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ai-tg-agent — Комментинг / Каналы</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <style>
+    .header {
+      position: sticky;
+      top: 0;
+      height: 60px;
+      background: rgba(8,8,15,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .back-btn {
+      display: flex; align-items: center; gap: 6px;
+      color: var(--text-2); text-decoration: none; font-size: 14px;
+      padding: 6px 0;
+      transition: color .2s;
+    }
+    .back-btn:hover { color: var(--text); }
+    .header-title { font-size: 16px; font-weight: 600; }
+
+    .main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 24px 100px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .toolbar-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .items-count { font-size: 13px; color: var(--text-2); }
+
+    .loading-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 60px;
+      color: var(--text-2);
+      font-size: 14px;
+    }
+
+    .channel-url {
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 12px;
+      color: var(--primary);
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: block;
+      text-decoration: none;
+    }
+    .channel-url:hover { text-decoration: underline; }
+    .channel-title { font-weight: 500; font-size: 14px; }
+    .channel-type {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(249,115,22,0.12);
+      color: #f97316;
+      border: 1px solid rgba(249,115,22,0.25);
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh"></div>
+
+  <header class="header">
+    <div class="header-left">
+      <a href="/commenting" class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 8H3M7 4l-4 4 4 4"/>
+        </svg>
+        Назад
+      </a>
+      <div style="width:1px;height:20px;background:var(--border)"></div>
+      <span class="header-title">Каналы/Группы — Комментинг</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="logoutBtn">Выйти</button>
+  </header>
+
+  <main class="main page">
+    <div class="toolbar fade-up">
+      <div class="items-count" id="channelsCount">Загрузка...</div>
+      <div class="toolbar-actions">
+        <button class="btn btn-ghost btn-sm" id="refreshBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 4v6h-6M1 20v-6h6"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Обновить
+        </button>
+        <button class="btn btn-ghost btn-sm" id="addChannelBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Добавить
+        </button>
+      </div>
+    </div>
+
+    <div id="tableArea" class="fade-up delay-1">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        Загрузка...
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL: Добавить канал/группу -->
+  <div class="modal-overlay hidden" id="addModal">
+    <div class="modal">
+      <div class="modal-title">Добавить канал/группу</div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+        <div class="input-wrap">
+          <label>Ссылка на канал или группу</label>
+          <input class="input-field" id="channelLink" placeholder="https://t.me/channel или @username" autocomplete="off" />
+        </div>
+        <p style="font-size:13px;color:var(--text-2);margin:0">
+          Принимаются ссылки вида <code>https://t.me/...</code>, <code>t.me/...</code> или <code>@username</code>.
+        </p>
+        <div class="text-err text-sm hidden" id="addErr"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="addCancelBtn">Отмена</button>
+        <button class="btn btn-primary" id="addSaveBtn">
+          <span>Добавить</span>
+          <span class="spinner hidden" id="addSpinner"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Удаление -->
+  <div class="modal-overlay hidden" id="deleteModal">
+    <div class="modal">
+      <div class="modal-title">Удалить канал?</div>
+      <div class="modal-body">
+        <p style="font-size:14px;color:var(--text-2)">
+          Канал/группа <strong id="deleteChannelName" style="color:var(--text)"></strong> будет удалён из списка комментирования.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="deleteCancelBtn">Отмена</button>
+        <button class="btn btn-danger" id="deleteConfirmBtn">
+          <span>Удалить</span>
+          <span class="spinner hidden" id="deleteSpinner"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { guardAuth, logout, api, toast } from '/static/js/api.js';
+
+    await guardAuth().catch(() => null);
+    document.getElementById('logoutBtn').addEventListener('click', () => logout());
+
+    const $ = id => document.getElementById(id);
+    const API = '/api/commenting/channels';
+
+    function showEl(...ids) { ids.forEach(id => $(id).classList.remove('hidden')); }
+    function hideEl(...ids) { ids.forEach(id => $(id).classList.add('hidden')); }
+    function setSpinner(spinnerId, btnId, on) {
+      $(spinnerId).classList.toggle('hidden', !on);
+      $(btnId).disabled = on;
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Load channels ─────────────────────────────────────────────────────────
+    let allChannels = [];
+
+    async function loadChannels() {
+      const area = $('tableArea');
+      area.innerHTML = `<div class="loading-state"><div class="spinner"></div> Загрузка...</div>`;
+      try {
+        allChannels = await api('GET', API);
+        renderTable(allChannels);
+      } catch (e) {
+        area.innerHTML = `<div class="empty-state"><p style="color:var(--error)">${esc(e.message)}</p></div>`;
+        $('channelsCount').textContent = 'Ошибка загрузки';
+      }
+    }
+
+    function renderTable(channels) {
+      $('channelsCount').textContent = `Каналов/Групп: ${channels.length}`;
+      const area = $('tableArea');
+
+      if (!channels.length) {
+        area.innerHTML = `
+          <div class="table-wrap">
+            <div class="empty-state">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+              </svg>
+              <p>Нет каналов и групп</p>
+              <div class="hint">Добавьте ссылку на канал или группу для комментирования</div>
+            </div>
+          </div>`;
+        return;
+      }
+
+      area.innerHTML = `
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Канал/Группа</th>
+                <th>Ссылка</th>
+                <th>Тип</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${channels.map(ch => `
+                <tr>
+                  <td><span class="channel-title">${esc(ch.title || ch.username || ch.link)}</span></td>
+                  <td><a class="channel-url" href="${esc(ch.link)}" target="_blank" rel="noopener">${esc(ch.link)}</a></td>
+                  <td><span class="channel-type">${esc(ch.type || 'канал')}</span></td>
+                  <td style="text-align:right">
+                    <button class="btn btn-danger btn-sm" data-del="${esc(ch.id || ch.link)}">Удалить</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+
+      area.querySelectorAll('[data-del]').forEach(btn => {
+        btn.addEventListener('click', () => openDeleteModal(btn.dataset.del));
+      });
+    }
+
+    $('refreshBtn').addEventListener('click', loadChannels);
+
+    // ── Add modal ─────────────────────────────────────────────────────────────
+    function openAddModal() {
+      $('channelLink').value = '';
+      hideEl('addErr');
+      showEl('addModal');
+      setTimeout(() => $('channelLink').focus(), 50);
+    }
+
+    $('addChannelBtn').addEventListener('click', openAddModal);
+    $('addCancelBtn').addEventListener('click', () => hideEl('addModal'));
+
+    $('addSaveBtn').addEventListener('click', async () => {
+      const link = $('channelLink').value.trim();
+      if (!link) {
+        $('addErr').textContent = 'Введите ссылку'; showEl('addErr'); return;
+      }
+      hideEl('addErr');
+      setSpinner('addSpinner', 'addSaveBtn', true);
+      try {
+        await api('POST', API, { link });
+        hideEl('addModal');
+        toast('Канал добавлен');
+        loadChannels();
+      } catch (e) {
+        $('addErr').textContent = e.message; showEl('addErr');
+      } finally {
+        setSpinner('addSpinner', 'addSaveBtn', false);
+      }
+    });
+
+    $('addModal').addEventListener('click', e => {
+      if (e.target === $('addModal')) hideEl('addModal');
+    });
+
+    // ── Delete modal ──────────────────────────────────────────────────────────
+    let deleteChannelId = null;
+
+    function openDeleteModal(id) {
+      deleteChannelId = id;
+      $('deleteChannelName').textContent = id;
+      showEl('deleteModal');
+    }
+
+    $('deleteCancelBtn').addEventListener('click', () => { hideEl('deleteModal'); deleteChannelId = null; });
+
+    $('deleteConfirmBtn').addEventListener('click', async () => {
+      if (!deleteChannelId) return;
+      setSpinner('deleteSpinner', 'deleteConfirmBtn', true);
+      try {
+        await api('DELETE', `${API}/${encodeURIComponent(deleteChannelId)}`);
+        hideEl('deleteModal');
+        toast('Канал удалён');
+        loadChannels();
+      } catch (e) {
+        toast(e.message, 'err');
+      } finally {
+        setSpinner('deleteSpinner', 'deleteConfirmBtn', false);
+        deleteChannelId = null;
+      }
+    });
+
+    loadChannels();
+  </script>
+</body>
+</html>

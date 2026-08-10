@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ai-tg-agent — Комментинг / Аккаунты</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    .header {
+      position: sticky;
+      top: 0;
+      height: 60px;
+      background: rgba(8,8,15,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .back-btn {
+      display: flex; align-items: center; gap: 6px;
+      color: var(--text-2); text-decoration: none; font-size: 14px;
+      padding: 6px 0;
+      transition: color .2s;
+    }
+    .back-btn:hover { color: var(--text); }
+    .header-title { font-size: 16px; font-weight: 600; }
+
+    .main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 24px 100px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .toolbar-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .accounts-count { font-size: 13px; color: var(--text-2); }
+
+    .loading-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 60px;
+      color: var(--text-2);
+      font-size: 14px;
+    }
+
+    .acc-id { font-family: 'SF Mono','Fira Code',monospace; font-size: 13px; color: var(--primary); }
+    .acc-phone { font-size: 13px; color: var(--text-2); }
+    .acc-name { font-weight: 500; }
+
+    .step { display: flex; flex-direction: column; gap: 14px; }
+    .step-title {
+      font-size: 13px; font-weight: 500;
+      color: var(--text-2);
+      text-transform: uppercase; letter-spacing: .06em;
+    }
+    .code-hint {
+      background: rgba(0,212,255,0.07);
+      border: 1px solid rgba(0,212,255,0.15);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 13px; color: var(--primary);
+    }
+
+    .qr-wrap {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 16px; padding: 24px;
+    }
+    #qrCanvas { background: white; border-radius: 10px; padding: 12px; }
+    .qr-status { font-size: 13px; color: var(--text-2); text-align: center; }
+
+    .success-wrap {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 16px;
+      padding: 24px; text-align: center;
+    }
+    .success-icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: rgba(34,197,94,.12); border: 2px solid var(--success);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .success-name { font-size: 18px; font-weight: 600; }
+    .success-sub { font-size: 14px; color: var(--text-2); }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh"></div>
+
+  <header class="header">
+    <div class="header-left">
+      <a href="/commenting" class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 8H3M7 4l-4 4 4 4"/>
+        </svg>
+        Назад
+      </a>
+      <div style="width:1px;height:20px;background:var(--border)"></div>
+      <span class="header-title">Аккаунты — Комментинг</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="logoutBtn">Выйти</button>
+  </header>
+
+  <main class="main page">
+    <div class="toolbar fade-up">
+      <div class="accounts-count" id="accountsCount">Загрузка...</div>
+      <div class="toolbar-actions">
+        <button class="btn btn-ghost btn-sm" id="refreshBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 4v6h-6M1 20v-6h6"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Обновить
+        </button>
+        <button class="btn btn-ghost btn-sm" id="addPhoneBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.56a16 16 0 0 0 5.55 5.55l.96-.96a2 2 0 0 1 2.11-.45c.907.34 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </svg>
+          По номеру
+        </button>
+        <button class="btn btn-ghost btn-sm" id="addQrBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+            <path d="M14 14h3M14 18h3M17 14v7"/>
+          </svg>
+          По QR
+        </button>
+      </div>
+    </div>
+
+    <div id="tableArea" class="fade-up delay-1">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        Загрузка аккаунтов...
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL: Добавить по телефону -->
+  <div class="modal-overlay hidden" id="phoneModal">
+    <div class="modal">
+      <div class="modal-title">Добавить по номеру телефона</div>
+
+      <div id="phoneStep1" class="modal-body step">
+        <div class="input-wrap">
+          <label>ID аккаунта</label>
+          <input class="input-field" id="phoneAccId" placeholder="comm_account1" />
+        </div>
+        <div class="input-wrap">
+          <label>Номер телефона</label>
+          <input class="input-field" id="phoneNumber" placeholder="+79001234567" type="tel" />
+        </div>
+        <div class="text-err text-sm hidden" id="phoneStep1Err"></div>
+        <div class="modal-footer" style="margin-top:0">
+          <button class="btn btn-ghost" id="phoneCancel1">Отмена</button>
+          <button class="btn btn-primary" id="phoneSendCode">
+            <span>Отправить код</span>
+            <span class="spinner hidden" id="phoneSendSpinner"></span>
+          </button>
+        </div>
+      </div>
+
+      <div id="phoneStep2" class="modal-body step hidden">
+        <div class="code-hint" id="codeHint">Код отправлен</div>
+        <div class="input-wrap">
+          <label>Код подтверждения</label>
+          <input class="input-field" id="phoneCode" placeholder="12345" inputmode="numeric" maxlength="10" />
+        </div>
+        <div class="input-wrap hidden" id="twofaWrap">
+          <label>Пароль 2FA</label>
+          <input class="input-field" id="phonePassword" type="password" placeholder="Пароль Telegram" />
+        </div>
+        <div class="text-err text-sm hidden" id="phoneStep2Err"></div>
+        <div class="modal-footer" style="margin-top:0">
+          <button class="btn btn-ghost" id="phoneCancel2">Отмена</button>
+          <button class="btn btn-ghost btn-sm" id="phoneResend">Повторить</button>
+          <button class="btn btn-primary" id="phoneConfirmCode">
+            <span>Подтвердить</span>
+            <span class="spinner hidden" id="phoneConfirmSpinner"></span>
+          </button>
+        </div>
+      </div>
+
+      <div id="phoneStep3" class="hidden">
+        <div class="success-wrap">
+          <div class="success-icon">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+          </div>
+          <div class="success-name" id="phoneSuccessName">Аккаунт авторизован</div>
+          <div class="success-sub" id="phoneSuccessSub"></div>
+          <button class="btn btn-primary" id="phoneDone">Готово</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Добавить по QR -->
+  <div class="modal-overlay hidden" id="qrModal">
+    <div class="modal">
+      <div class="modal-title">Добавить через QR-код</div>
+      <div class="modal-body">
+
+        <div id="qrStep0" class="step">
+          <div class="input-wrap">
+            <label>ID аккаунта</label>
+            <input class="input-field" id="qrAccId" placeholder="comm_account1" />
+          </div>
+          <div class="text-err text-sm hidden" id="qrStep0Err"></div>
+          <div class="modal-footer" style="margin-top:0">
+            <button class="btn btn-ghost" id="qrCancel0">Отмена</button>
+            <button class="btn btn-primary" id="qrStartBtn">
+              <span>Создать QR</span>
+              <span class="spinner hidden" id="qrStartSpinner"></span>
+            </button>
+          </div>
+        </div>
+
+        <div id="qrStep1" class="hidden">
+          <div class="qr-wrap">
+            <div id="qrCanvas"></div>
+            <div class="qr-status" id="qrStatus">Ожидание сканирования...</div>
+            <div class="text-sm text-muted" style="text-align:center">Откройте Telegram → Настройки → Устройства → Подключить</div>
+          </div>
+          <div class="twofa-wrap hidden" id="qrTwofaWrap">
+            <div class="code-hint">Аккаунт защищён двухфакторной аутентификацией</div>
+            <div class="input-wrap">
+              <label>Пароль 2FA</label>
+              <input class="input-field" id="qrPassword" type="password" placeholder="Пароль Telegram" />
+            </div>
+            <button class="btn btn-primary btn-full" id="qrConfirm2fa">Подтвердить</button>
+          </div>
+          <div class="modal-footer" style="margin-top:8px;justify-content:center">
+            <button class="btn btn-ghost btn-sm" id="qrCancelWait">Отмена</button>
+          </div>
+        </div>
+
+        <div id="qrStep2" class="hidden">
+          <div class="success-wrap">
+            <div class="success-icon">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+            </div>
+            <div class="success-name" id="qrSuccessName">Аккаунт подключён</div>
+            <div class="success-sub" id="qrSuccessSub"></div>
+            <button class="btn btn-primary" id="qrDone">Готово</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Удаление -->
+  <div class="modal-overlay hidden" id="deleteModal">
+    <div class="modal">
+      <div class="modal-title">Выйти из аккаунта?</div>
+      <div class="modal-body">
+        <p style="font-size:14px;color:var(--text-2)">
+          Аккаунт <strong id="deleteAccName" style="color:var(--text)"></strong> будет отключён и удалён из сервиса комментинга.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="deleteCancelBtn">Отмена</button>
+        <button class="btn btn-danger" id="deleteConfirmBtn">
+          <span>Выйти</span>
+          <span class="spinner hidden" id="deleteSpinner"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { guardAuth, logout, api, toast } from '/static/js/api.js';
+
+    await guardAuth().catch(() => null);
+    document.getElementById('logoutBtn').addEventListener('click', () => logout());
+
+    const $ = id => document.getElementById(id);
+    const API = '/api/commenting/accounts';
+
+    function showEl(...ids) { ids.forEach(id => $(id).classList.remove('hidden')); }
+    function hideEl(...ids) { ids.forEach(id => $(id).classList.add('hidden')); }
+    function setSpinner(spinnerId, btnId, on) {
+      $(spinnerId).classList.toggle('hidden', !on);
+      $(btnId).disabled = on;
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function statusBadge(acc) {
+      if (acc.authorized) return `<span class="badge badge-ok"><span class="badge-dot"></span>Подключён</span>`;
+      if (acc.connected)  return `<span class="badge badge-warn"><span class="badge-dot"></span>Соединение</span>`;
+      return `<span class="badge badge-err"><span class="badge-dot"></span>Отключён</span>`;
+    }
+
+    // ── Load accounts ─────────────────────────────────────────────────────────
+    let allAccounts = [];
+
+    async function loadAccounts() {
+      const area = $('tableArea');
+      area.innerHTML = `<div class="loading-state"><div class="spinner"></div> Загрузка...</div>`;
+      try {
+        allAccounts = await api('GET', API);
+        renderTable(allAccounts);
+      } catch (e) {
+        area.innerHTML = `<div class="empty-state"><p style="color:var(--error)">${esc(e.message)}</p></div>`;
+        $('accountsCount').textContent = 'Ошибка загрузки';
+      }
+    }
+
+    function renderTable(accounts) {
+      $('accountsCount').textContent = `Аккаунтов: ${accounts.length}`;
+      const area = $('tableArea');
+
+      if (!accounts.length) {
+        area.innerHTML = `
+          <div class="table-wrap">
+            <div class="empty-state">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+              </svg>
+              <p>Нет аккаунтов</p>
+              <div class="hint">Добавьте аккаунт через номер телефона или QR-код</div>
+            </div>
+          </div>`;
+        return;
+      }
+
+      area.innerHTML = `
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Телефон</th>
+                <th>Имя</th>
+                <th>Username</th>
+                <th>Статус</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${accounts.map(acc => `
+                <tr>
+                  <td><span class="acc-id">${esc(acc.account_id)}</span></td>
+                  <td><span class="acc-phone">${esc(acc.phone || '—')}</span></td>
+                  <td><span class="acc-name">${esc(acc.name || '—')}</span></td>
+                  <td><span class="text-muted text-sm">${acc.username ? '@'+esc(acc.username) : '—'}</span></td>
+                  <td>${statusBadge(acc)}</td>
+                  <td style="text-align:right">
+                    <button class="btn btn-danger btn-sm" data-del="${esc(acc.account_id)}">Выйти</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+
+      area.querySelectorAll('[data-del]').forEach(btn => {
+        btn.addEventListener('click', () => openDeleteModal(btn.dataset.del));
+      });
+    }
+
+    $('refreshBtn').addEventListener('click', loadAccounts);
+
+    // ── Phone modal ───────────────────────────────────────────────────────────
+    let currentAccId = null;
+
+    function openPhoneModal() {
+      showEl('phoneModal');
+      showEl('phoneStep1'); hideEl('phoneStep2','phoneStep3');
+      $('phoneAccId').value = ''; $('phoneNumber').value = '';
+      $('phoneCode').value = ''; $('phonePassword').value = '';
+      hideEl('phoneStep1Err','phoneStep2Err','twofaWrap');
+      currentAccId = null;
+    }
+    function closePhoneModal() { hideEl('phoneModal'); currentAccId = null; }
+
+    $('addPhoneBtn').addEventListener('click', openPhoneModal);
+    $('phoneCancel1').addEventListener('click', closePhoneModal);
+    $('phoneCancel2').addEventListener('click', closePhoneModal);
+    $('phoneDone').addEventListener('click', () => { closePhoneModal(); loadAccounts(); });
+
+    $('phoneSendCode').addEventListener('click', async () => {
+      const accId = $('phoneAccId').value.trim();
+      const phone = $('phoneNumber').value.trim();
+      if (!accId || !phone) {
+        $('phoneStep1Err').textContent = 'Заполните все поля'; showEl('phoneStep1Err'); return;
+      }
+      if (!phone.startsWith('+') || phone.length < 8) {
+        $('phoneStep1Err').textContent = 'Формат: +79001234567'; showEl('phoneStep1Err'); return;
+      }
+      hideEl('phoneStep1Err');
+      $('phoneSendCode').disabled = true; showEl('phoneSendSpinner');
+      try {
+        const res = await api('POST', `${API}/${encodeURIComponent(accId)}/auth/start`, { phone });
+        currentAccId = accId;
+        $('codeHint').textContent = res.message || 'Код отправлен';
+        hideEl('phoneStep1'); showEl('phoneStep2');
+      } catch (e) {
+        $('phoneStep1Err').textContent = e.message; showEl('phoneStep1Err');
+      } finally {
+        $('phoneSendCode').disabled = false; hideEl('phoneSendSpinner');
+      }
+    });
+
+    $('phoneResend').addEventListener('click', async () => {
+      if (!currentAccId) return;
+      try {
+        const res = await api('POST', `${API}/${encodeURIComponent(currentAccId)}/auth/resend`);
+        $('codeHint').textContent = res.message || 'Код повторно отправлен';
+        toast('Код повторно отправлен', 'inf');
+      } catch (e) { toast(e.message, 'err'); }
+    });
+
+    $('phoneConfirmCode').addEventListener('click', async () => {
+      const code = $('phoneCode').value.trim();
+      const password = $('phonePassword').value;
+      if (!code) { $('phoneStep2Err').textContent = 'Введите код'; showEl('phoneStep2Err'); return; }
+      hideEl('phoneStep2Err');
+      setSpinner('phoneConfirmSpinner', 'phoneConfirmCode', true);
+      try {
+        const res = await api('POST', `${API}/${encodeURIComponent(currentAccId)}/auth/code`, { code, password: password||null });
+        if (res.status === '2fa_required') {
+          showEl('twofaWrap');
+          toast('Нужен пароль двухфакторной аутентификации', 'inf');
+        } else if (res.status === 'authorized') {
+          $('phoneSuccessName').textContent = res.name || 'Аккаунт авторизован';
+          $('phoneSuccessSub').textContent = res.phone ? `+${res.phone}` : '';
+          hideEl('phoneStep2'); showEl('phoneStep3');
+        } else {
+          $('phoneStep2Err').textContent = res.message || 'Неизвестная ошибка'; showEl('phoneStep2Err');
+        }
+      } catch (e) {
+        $('phoneStep2Err').textContent = e.message; showEl('phoneStep2Err');
+      } finally {
+        setSpinner('phoneConfirmSpinner', 'phoneConfirmCode', false);
+      }
+    });
+
+    // ── QR modal ──────────────────────────────────────────────────────────────
+    let qrPolling = false;
+    let qrAccId = null;
+    let qrInstance = null;
+
+    function openQrModal() {
+      showEl('qrModal');
+      showEl('qrStep0'); hideEl('qrStep1','qrStep2','qrTwofaWrap');
+      $('qrAccId').value = ''; hideEl('qrStep0Err');
+      qrAccId = null; qrPolling = false;
+      if (qrInstance) { qrInstance.clear(); qrInstance = null; }
+      $('qrCanvas').innerHTML = '';
+    }
+    function closeQrModal() { hideEl('qrModal'); qrPolling = false; qrAccId = null; }
+
+    $('addQrBtn').addEventListener('click', openQrModal);
+    $('qrCancel0').addEventListener('click', closeQrModal);
+    $('qrCancelWait').addEventListener('click', closeQrModal);
+    $('qrDone').addEventListener('click', () => { closeQrModal(); loadAccounts(); });
+
+    $('qrStartBtn').addEventListener('click', async () => {
+      const accId = $('qrAccId').value.trim();
+      if (!accId) { $('qrStep0Err').textContent = 'Введите ID'; showEl('qrStep0Err'); return; }
+      hideEl('qrStep0Err');
+      $('qrStartBtn').disabled = true; showEl('qrStartSpinner');
+      try {
+        const res = await api('POST', `${API}/${encodeURIComponent(accId)}/auth/qr`);
+        if (res.status !== 'qr_ready') throw new Error(res.message || 'Не удалось создать QR');
+        qrAccId = accId;
+        hideEl('qrStep0'); showEl('qrStep1');
+        renderQr(res.url);
+        startQrPolling();
+      } catch (e) {
+        $('qrStep0Err').textContent = e.message; showEl('qrStep0Err');
+      } finally {
+        $('qrStartBtn').disabled = false; hideEl('qrStartSpinner');
+      }
+    });
+
+    function renderQr(url) {
+      $('qrCanvas').innerHTML = '';
+      qrInstance = new QRCode($('qrCanvas'), {
+        text: url, width: 200, height: 200,
+        colorDark: '#000000', colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+    }
+
+    async function startQrPolling() {
+      qrPolling = true;
+      while (qrPolling && qrAccId) {
+        try {
+          const res = await api('POST', `${API}/${encodeURIComponent(qrAccId)}/auth/qr/wait`, {});
+          if (!qrPolling) break;
+          if (res.status === 'authorized') {
+            qrPolling = false;
+            $('qrSuccessName').textContent = res.name || 'Аккаунт подключён';
+            $('qrSuccessSub').textContent = res.phone ? `+${res.phone}` : '';
+            hideEl('qrStep1'); showEl('qrStep2');
+            return;
+          }
+          if (res.status === '2fa_required') {
+            qrPolling = false;
+            showEl('qrTwofaWrap');
+            $('qrStatus').textContent = 'QR отсканирован';
+            return;
+          }
+          if (res.status === 'timeout') {
+            try {
+              const r2 = await api('POST', `${API}/${encodeURIComponent(qrAccId)}/auth/qr/refresh`);
+              if (r2.status === 'qr_ready') {
+                renderQr(r2.url);
+                $('qrStatus').textContent = 'QR обновлён, ожидание сканирования...';
+              }
+            } catch {}
+          }
+        } catch (e) {
+          if (!qrPolling) break;
+          $('qrStatus').textContent = `Ошибка: ${e.message}`;
+          await new Promise(r => setTimeout(r, 3000));
+        }
+      }
+    }
+
+    $('qrConfirm2fa').addEventListener('click', async () => {
+      const password = $('qrPassword').value;
+      if (!password) return;
+      $('qrConfirm2fa').disabled = true;
+      try {
+        const res = await api('POST', `${API}/${encodeURIComponent(qrAccId)}/auth/qr/wait`, { password });
+        if (res.status === 'authorized') {
+          $('qrSuccessName').textContent = res.name || 'Аккаунт подключён';
+          $('qrSuccessSub').textContent = res.phone ? `+${res.phone}` : '';
+          hideEl('qrStep1'); showEl('qrStep2');
+        } else {
+          toast(res.message || 'Ошибка 2FA', 'err');
+          $('qrConfirm2fa').disabled = false;
+        }
+      } catch (e) {
+        toast(e.message, 'err');
+        $('qrConfirm2fa').disabled = false;
+      }
+    });
+
+    // ── Delete modal ──────────────────────────────────────────────────────────
+    let deleteAccId = null;
+
+    function openDeleteModal(accId) {
+      deleteAccId = accId;
+      $('deleteAccName').textContent = accId;
+      showEl('deleteModal');
+    }
+
+    $('deleteCancelBtn').addEventListener('click', () => { hideEl('deleteModal'); deleteAccId = null; });
+
+    $('deleteConfirmBtn').addEventListener('click', async () => {
+      if (!deleteAccId) return;
+      setSpinner('deleteSpinner', 'deleteConfirmBtn', true);
+      try {
+        await api('DELETE', `${API}/${encodeURIComponent(deleteAccId)}`);
+        hideEl('deleteModal');
+        toast(`Аккаунт ${deleteAccId} удалён`);
+        loadAccounts();
+      } catch (e) {
+        toast(e.message, 'err');
+      } finally {
+        setSpinner('deleteSpinner', 'deleteConfirmBtn', false);
+        deleteAccId = null;
+      }
+    });
+
+    loadAccounts();
+  </script>
+</body>
+</html>
