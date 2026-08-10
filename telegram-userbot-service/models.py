@@ -94,3 +94,7 @@ class AddProxyRequest(BaseModel):
 
 class ProxySettingsRequest(BaseModel):
     check_interval_seconds: Optional[int] = None
+
+
+class CommentingChannelRequest(BaseModel):
+    link: str  # https://t.me/..., t.me/..., @username или просто username
