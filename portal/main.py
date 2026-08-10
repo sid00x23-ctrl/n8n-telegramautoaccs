@@ -402,6 +402,63 @@ async def delete_account(account_id: str, request: Request):
     return await _proxy("DELETE", f"/accounts/{account_id}")
 
 
+# ── Commenting accounts ────────────────────────────────────────────────────────
+
+@app.get("/api/commenting/accounts")
+async def get_commenting_accounts(request: Request):
+    require_auth(request)
+    return await _proxy("GET", "/commenting/accounts")
+
+
+@app.post("/api/commenting/accounts/{account_id}/auth/start")
+async def commenting_auth_start(account_id: str, request: Request):
+    require_auth(request)
+    body = await request.json()
+    return await _proxy("POST", f"/commenting/accounts/{account_id}/auth/start", json_body=body)
+
+
+@app.post("/api/commenting/accounts/{account_id}/auth/resend")
+async def commenting_auth_resend(account_id: str, request: Request):
+    require_auth(request)
+    return await _proxy("POST", f"/commenting/accounts/{account_id}/auth/resend")
+
+
+@app.post("/api/commenting/accounts/{account_id}/auth/code")
+async def commenting_auth_code(account_id: str, request: Request):
+    require_auth(request)
+    body = await request.json()
+    return await _proxy("POST", f"/commenting/accounts/{account_id}/auth/code", json_body=body)
+
+
+@app.post("/api/commenting/accounts/{account_id}/auth/qr")
+async def commenting_auth_qr_start(account_id: str, request: Request):
+    require_auth(request)
+    return await _proxy("POST", f"/commenting/accounts/{account_id}/auth/qr")
+
+
+@app.post("/api/commenting/accounts/{account_id}/auth/qr/refresh")
+async def commenting_auth_qr_refresh(account_id: str, request: Request):
+    require_auth(request)
+    return await _proxy("POST", f"/commenting/accounts/{account_id}/auth/qr/refresh")
+
+
+@app.post("/api/commenting/accounts/{account_id}/auth/qr/wait")
+async def commenting_auth_qr_wait(account_id: str, request: Request):
+    require_auth(request)
+    body = await request.json()
+    password = body.get("password")
+    path = f"/commenting/accounts/{account_id}/auth/qr/wait"
+    if password:
+        path += f"?password={password}"
+    return await _proxy("POST", path, timeout=35.0)
+
+
+@app.delete("/api/commenting/accounts/{account_id}")
+async def commenting_delete_account(account_id: str, request: Request):
+    require_auth(request)
+    return await _proxy("DELETE", f"/commenting/accounts/{account_id}")
+
+
 # ── Google Sheets contacts ────────────────────────────────────────────────────
 
 _SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets"

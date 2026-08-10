@@ -177,7 +177,18 @@ def _parse_proxy(proxy_url: Optional[str]) -> Tuple[Optional[tuple], Optional[ty
 
 
 class AccountManager:
-    def __init__(self, proxy_pool: Optional[ProxyPool] = None):
+    def __init__(
+        self,
+        proxy_pool: Optional[ProxyPool] = None,
+        configs_file: Optional[Path] = None,
+        sessions_dir: Optional[Path] = None,
+        sent_chats_file: Optional[Path] = None,
+    ):
+        self._configs_file = configs_file or CONFIGS_FILE
+        self._sent_chats_file = sent_chats_file or SENT_CHATS_FILE
+        self._sessions_dir = sessions_dir or self._sessions_dir
+        self._sessions_dir.mkdir(parents=True, exist_ok=True)
+
         # account_id → TelegramClient
         self.clients: dict[str, TelegramClient] = {}
         # account_id → AccountConfig
@@ -203,16 +214,16 @@ class AccountManager:
     # ------------------------------------------------------------------ #
 
     def _load_configs(self):
-        if CONFIGS_FILE.exists():
-            data = json.loads(CONFIGS_FILE.read_text())
+        if self._configs_file.exists():
+            data = json.loads(self._configs_file.read_text())
             for item in data:
                 cfg = AccountConfig(**item)
                 self.configs[cfg.account_id] = cfg
-            logger.info(f"Загружено {len(self.configs)} аккаунтов из конфига")
+            logger.info(f"Загружено {len(self.configs)} аккаунтов из {self._configs_file.name}")
 
     def _save_configs(self):
         data = [cfg.model_dump(mode='json') for cfg in self.configs.values()]
-        CONFIGS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+        self._configs_file.write_text(json.dumps(data, ensure_ascii=False, indent=2))
 
     @staticmethod
     def _parse_status(status) -> dict:
@@ -232,14 +243,14 @@ class AccountManager:
         return {"type": "unknown"}
 
     def _load_sent_chats(self):
-        if SENT_CHATS_FILE.exists():
-            raw = json.loads(SENT_CHATS_FILE.read_text())
+        if self._sent_chats_file.exists():
+            raw = json.loads(self._sent_chats_file.read_text())
             self._sent_chats = {acc: set(ids) for acc, ids in raw.items()}
             logger.info(f"Загружено sent_chats для {len(self._sent_chats)} аккаунтов")
 
     def _save_sent_chats(self):
         raw = {acc: list(ids) for acc, ids in self._sent_chats.items()}
-        SENT_CHATS_FILE.write_text(json.dumps(raw, ensure_ascii=False))
+        self._sent_chats_file.write_text(json.dumps(raw, ensure_ascii=False))
 
     # ------------------------------------------------------------------ #
     #  Запуск / остановка                                                  #
@@ -292,7 +303,7 @@ class AccountManager:
     # ------------------------------------------------------------------ #
 
     async def _connect_client(self, account_id: str, phone: str) -> TelegramClient:
-        session_path = str(settings.SESSIONS_DIR / account_id)
+        session_path = str(self._sessions_dir / account_id)
         cfg = self.configs.get(account_id)
         try:
             proxy, connection_class = _parse_proxy(cfg.proxy if cfg else None)
@@ -405,7 +416,7 @@ class AccountManager:
             except Exception:
                 pass
             for suffix in [".session", ".session-journal"]:
-                path = settings.SESSIONS_DIR / f"{account_id}{suffix}"
+                path = self._sessions_dir / f"{account_id}{suffix}"
                 if path.exists():
                     path.unlink()
                     logger.info(f"Удалён старый файл сессии: {path.name}")
@@ -571,7 +582,7 @@ class AccountManager:
             except Exception:
                 pass
             for suffix in [".session", ".session-journal"]:
-                path = settings.SESSIONS_DIR / f"{account_id}{suffix}"
+                path = self._sessions_dir / f"{account_id}{suffix}"
                 if path.exists():
                     path.unlink()
                     logger.info(f"Удалён старый файл сессии: {path.name}")
@@ -579,7 +590,7 @@ class AccountManager:
             self.authorized.pop(account_id, None)
 
         if account_id not in self.clients:
-            session_path = str(settings.SESSIONS_DIR / account_id)
+            session_path = str(self._sessions_dir / account_id)
             client = TelegramClient(
                 session_path,
                 settings.TELEGRAM_API_ID,
@@ -1132,7 +1143,7 @@ class AccountManager:
 
         # Удаляем файлы сессии
         for suffix in [".session", ".session-journal"]:
-            path = settings.SESSIONS_DIR / f"{account_id}{suffix}"
+            path = self._sessions_dir / f"{account_id}{suffix}"
             if path.exists():
                 path.unlink()
 

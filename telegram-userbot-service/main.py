@@ -56,8 +56,15 @@ async def main():
     logging.basicConfig(level=logging.WARNING, format=LOG_FORMAT)
     logging.getLogger("telethon").setLevel(logging.ERROR)
 
+    from pathlib import Path
+
     proxy_pool = ProxyPool()
     manager = AccountManager(proxy_pool=proxy_pool)
+    commenting_manager = AccountManager(
+        configs_file=Path("commenting_accounts_config.json"),
+        sessions_dir=Path("commenting_sessions"),
+        sent_chats_file=Path("commenting_sent_chats.json"),
+    )
 
     if HEADLESS:
         # Серверный режим: сначала поднимаем HTTP-сервер, потом подключаем аккаунты фоном.
@@ -65,19 +72,24 @@ async def main():
         logging.getLogger().setLevel(logging.INFO)
         logging.getLogger("telethon").setLevel(logging.WARNING)
 
-        app = create_app(manager, proxy_pool)
+        app = create_app(manager, proxy_pool, commenting_manager)
         config = uvicorn.Config(app, host=settings.SERVICE_HOST, port=settings.SERVICE_PORT,
                                 log_level="warning", access_log=False)
         server = uvicorn.Server(config)
 
         async def _start_accounts():
-            await manager.start_all()
+            await asyncio.gather(
+                manager.start_all(),
+                commenting_manager.start_all(),
+            )
             statuses = manager.get_status()
             authorized = [s for s in statuses if s["authorized"]]
-            if not authorized:
+            comm_statuses = commenting_manager.get_status()
+            comm_authorized = [s for s in comm_statuses if s["authorized"]]
+            if not authorized and not comm_authorized:
                 console.print("[yellow]HEADLESS: нет авторизованных аккаунтов.[/yellow]")
             else:
-                console.print(f"[green]HEADLESS: загружено аккаунтов: {len(authorized)}[/green]")
+                console.print(f"[green]HEADLESS: рассылка={len(authorized)}, комментинг={len(comm_authorized)}[/green]")
 
         asyncio.create_task(_start_accounts())
 
@@ -87,11 +99,11 @@ async def main():
             pass
         finally:
             console.print("\n[dim]Завершение работы...[/dim]")
-            await manager.stop_all()
+            await asyncio.gather(manager.stop_all(), commenting_manager.stop_all())
         return
 
     # Интерактивный режим: подключаем аккаунты синхронно, потом CLI
-    await manager.start_all()
+    await asyncio.gather(manager.start_all(), commenting_manager.start_all())
     cli = CLI(manager)
     should_start = await cli.run()
 
@@ -113,7 +125,7 @@ async def main():
         f"[dim]http://{settings.SERVICE_HOST}:{settings.SERVICE_PORT}[/dim]"
     )
 
-    app = create_app(manager, proxy_pool)
+    app = create_app(manager, proxy_pool, commenting_manager)
     config = uvicorn.Config(app, host=settings.SERVICE_HOST, port=settings.SERVICE_PORT,
                             log_level="warning", access_log=False)
     server = uvicorn.Server(config)
@@ -131,7 +143,7 @@ async def main():
             await asyncio.wait_for(server_task, timeout=5)
         except (asyncio.TimeoutError, asyncio.CancelledError):
             server_task.cancel()
-        await manager.stop_all()
+        await asyncio.gather(manager.stop_all(), commenting_manager.stop_all())
 
 
 if __name__ == "__main__":

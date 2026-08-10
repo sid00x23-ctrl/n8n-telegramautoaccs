@@ -12,7 +12,7 @@ from manager import AccountManager, _parse_proxy
 from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest, WarmupInitiatorRequest, WarmupReceiverRequest, MailingRequest, ProxyRequest, AddProxyRequest, ProxySettingsRequest
 
 
-def create_app(manager: AccountManager, proxy_pool=None) -> FastAPI:
+def create_app(manager: AccountManager, proxy_pool=None, commenting_manager: Optional[AccountManager] = None) -> FastAPI:
     app = FastAPI(
         title="Telegram Userbot Service",
         description="HTTP API для n8n — отправка сообщений через личные Telegram-аккаунты",
@@ -384,5 +384,64 @@ def create_app(manager: AccountManager, proxy_pool=None) -> FastAPI:
             return await manager.react_to_message(body.account_id, body.chat_id, body.message_id, body.emoji, body.username)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+    # ------------------------------------------------------------------ #
+    #  Commenting accounts                                                  #
+    # ------------------------------------------------------------------ #
+
+    if commenting_manager is not None:
+
+        @app.get("/commenting/accounts", tags=["commenting"])
+        async def commenting_list_accounts():
+            return commenting_manager.get_status()
+
+        @app.post("/commenting/accounts/{account_id}/auth/start", tags=["commenting"])
+        async def commenting_auth_start(account_id: str, body: AuthStartRequest):
+            result = await commenting_manager.start_authorization(account_id, body.phone)
+            if result.get("status") == "error":
+                raise HTTPException(status_code=400, detail=result["message"])
+            return result
+
+        @app.post("/commenting/accounts/{account_id}/auth/resend", tags=["commenting"])
+        async def commenting_auth_resend(account_id: str):
+            result = await commenting_manager.resend_authorization_code(account_id)
+            if result.get("status") == "error":
+                raise HTTPException(status_code=400, detail=result["message"])
+            return result
+
+        @app.post("/commenting/accounts/{account_id}/auth/code", tags=["commenting"])
+        async def commenting_auth_code(account_id: str, body: AuthCompleteRequest):
+            result = await commenting_manager.complete_authorization(account_id, body.code, body.password)
+            if result.get("status") == "error":
+                raise HTTPException(status_code=400, detail=result["message"])
+            return result
+
+        @app.post("/commenting/accounts/{account_id}/auth/qr", tags=["commenting"])
+        async def commenting_auth_qr_start(account_id: str):
+            result = await commenting_manager.start_qr_authorization(account_id)
+            if result.get("status") == "error":
+                raise HTTPException(status_code=400, detail=result["message"])
+            return result
+
+        @app.post("/commenting/accounts/{account_id}/auth/qr/refresh", tags=["commenting"])
+        async def commenting_auth_qr_refresh(account_id: str):
+            result = await commenting_manager.refresh_qr_authorization(account_id)
+            if result.get("status") == "error":
+                raise HTTPException(status_code=400, detail=result["message"])
+            return result
+
+        @app.post("/commenting/accounts/{account_id}/auth/qr/wait", tags=["commenting"])
+        async def commenting_auth_qr_wait(account_id: str, password: Optional[str] = None):
+            result = await commenting_manager.wait_qr_authorization(account_id, password)
+            if result.get("status") == "error":
+                raise HTTPException(status_code=400, detail=result["message"])
+            return result
+
+        @app.delete("/commenting/accounts/{account_id}", tags=["commenting"])
+        async def commenting_delete_account(account_id: str):
+            if account_id not in commenting_manager.configs and account_id not in commenting_manager.clients:
+                raise HTTPException(status_code=404, detail=f"Аккаунт '{account_id}' не найден")
+            await commenting_manager.logout(account_id)
+            return {"status": "deleted", "account_id": account_id}
 
     return app
