@@ -216,4 +216,49 @@ PYEOF
 
 fi
 
+# ---------------------------------------------------------------------------
+# 5. LmChatDeepSeek — parallel_tool_calls: false
+#
+# DeepSeek возвращает несколько tool_calls за один шаг, но n8n/LangChain
+# не всегда отвечает на каждый из них, что вызывает ошибку:
+# "An assistant message with 'tool_calls' must be followed by tool messages
+#  responding to each 'tool_call_id'."
+# Фикс: запрещаем параллельные вызовы инструментов на уровне API.
+# ---------------------------------------------------------------------------
+DEEPSEEK_NODE_JS="$N8N_DIR/node_modules/@n8n/n8n-nodes-langchain/dist/nodes/llms/LmChatDeepSeek/LmChatDeepSeek.node.js"
+
+if [ ! -f "$DEEPSEEK_NODE_JS" ]; then
+  echo "  WARNING: LmChatDeepSeek.node.js not found at $DEEPSEEK_NODE_JS, skipping"
+else
+
+python3 - "$DEEPSEEK_NODE_JS" << 'PYEOF'
+import sys, pathlib
+
+path = pathlib.Path(sys.argv[1])
+src = path.read_text()
+
+old = """            modelKwargs: options.responseFormat
+                ? {
+                    response_format: { type: options.responseFormat },
+                }
+                : undefined,"""
+
+new = """            modelKwargs: {
+                ...(options.responseFormat ? { response_format: { type: options.responseFormat } } : {}),
+                parallel_tool_calls: false,
+            },"""
+
+if old in src:
+    src = src.replace(old, new, 1)
+    path.write_text(src)
+    print('  patched: DeepSeek parallel_tool_calls: false')
+    print(f'  saved: {path}')
+elif 'parallel_tool_calls: false' in src:
+    print('  already patched: parallel_tool_calls: false')
+else:
+    print(f'  WARNING: pattern not found in LmChatDeepSeek.node.js')
+PYEOF
+
+fi
+
 echo "==> patch-n8n.sh done"
