@@ -9,7 +9,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 from manager import AccountManager, _parse_proxy
-from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest, WarmupInitiatorRequest, WarmupReceiverRequest, MailingRequest, ProxyRequest, AddProxyRequest, ProxySettingsRequest
+from models import SendMessageRequest, ReactRequest, AuthStartRequest, AuthCompleteRequest, EditMessageRequest, TypingSettingsRequest, LinkPreviewRequest, SpamBanRequest, SpamBanAutoRequest, WarmupInitiatorRequest, WarmupReceiverRequest, MailingRequest, ProxyRequest, AddProxyRequest, ProxySettingsRequest, CommentRequest
 
 
 def create_app(manager: AccountManager, proxy_pool=None, commenting_manager: Optional[AccountManager] = None) -> FastAPI:
@@ -443,5 +443,31 @@ def create_app(manager: AccountManager, proxy_pool=None, commenting_manager: Opt
                 raise HTTPException(status_code=404, detail=f"Аккаунт '{account_id}' не найден")
             await commenting_manager.logout(account_id)
             return {"status": "deleted", "account_id": account_id}
+
+        @app.get("/commenting/channel/{channel}/last_post", tags=["commenting"])
+        async def commenting_get_last_post(channel: str, account_id: str):
+            """
+            Получить последний пост канала с текстом.
+            Params: account_id — ID commenting-аккаунта.
+            Возвращает: {"post": {post_id, text, date, has_discussion}} или {"post": null}.
+            """
+            try:
+                post = await commenting_manager.get_channel_last_post(account_id, channel)
+                return {"post": post}
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+
+        @app.post("/commenting/send", tags=["commenting"])
+        async def commenting_send(body: CommentRequest):
+            """
+            Оставить комментарий к посту канала через discussion group.
+            Body: {account_id, channel, post_id, text, instant?}
+            """
+            try:
+                return await commenting_manager.send_comment(
+                    body.account_id, body.channel, body.post_id, body.text, body.instant
+                )
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
 
     return app

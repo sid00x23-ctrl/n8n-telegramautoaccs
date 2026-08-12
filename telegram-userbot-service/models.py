@@ -94,3 +94,11 @@ class AddProxyRequest(BaseModel):
 
 class ProxySettingsRequest(BaseModel):
     check_interval_seconds: Optional[int] = None
+
+
+class CommentRequest(BaseModel):
+    account_id: str           # ID commenting-аккаунта
+    channel: str              # @username канала (можно без @)
+    post_id: int              # ID поста в канале
+    text: str                 # текст комментария
+    instant: bool = False     # если True — пропускает паузу и typing

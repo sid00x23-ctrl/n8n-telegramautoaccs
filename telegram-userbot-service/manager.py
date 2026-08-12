@@ -1334,6 +1334,88 @@ class AccountManager:
             })
         return result
 
+    async def get_channel_last_post(self, account_id: str, channel: str) -> Optional[dict]:
+        """Получить последний пост канала с текстом."""
+        if account_id not in self.clients:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        if not self.authorized.get(account_id):
+            raise ValueError(f"Аккаунт '{account_id}' не авторизован")
+
+        client = self.clients[account_id]
+        clean = channel.strip().lstrip("@")
+        try:
+            entity = await asyncio.wait_for(client.get_entity(clean), timeout=30)
+        except Exception as e:
+            raise ValueError(f"Не удалось резолвить канал @{clean}: {e}")
+
+        msgs = await client.get_messages(entity, limit=10)
+
+        for msg in msgs:
+            if not msg.text:
+                continue
+            has_discussion = hasattr(msg, "replies") and msg.replies is not None
+            return {
+                "post_id": msg.id,
+                "text": msg.text,
+                "date": msg.date.isoformat(),
+                "has_discussion": has_discussion,
+            }
+        return None
+
+    async def send_comment(self, account_id: str, channel: str, post_id: int, text: str, instant: bool = False) -> dict:
+        """Оставить комментарий к посту канала через discussion group."""
+        if account_id not in self.clients:
+            raise ValueError(f"Аккаунт '{account_id}' не найден")
+        if not self.authorized.get(account_id):
+            raise ValueError(f"Аккаунт '{account_id}' не авторизован")
+
+        client = self.clients[account_id]
+        clean = channel.strip().lstrip("@")
+
+        try:
+            channel_entity = await asyncio.wait_for(client.get_entity(clean), timeout=30)
+        except Exception as e:
+            raise ValueError(f"Не удалось резолвить канал @{clean}: {e}")
+
+        from telethon.tl.functions.messages import GetDiscussionMessageRequest
+        try:
+            discussion = await asyncio.wait_for(
+                client(GetDiscussionMessageRequest(peer=channel_entity, msg_id=post_id)),
+                timeout=30,
+            )
+        except Exception as e:
+            raise ValueError(f"Не удалось получить discussion для поста {post_id}: {e}")
+
+        if not discussion.chats:
+            raise ValueError(f"У канала @{clean} нет discussion group")
+
+        group = discussion.chats[0]
+        reply_to_id = discussion.messages[0].id if discussion.messages else post_id
+
+        text = text.replace("—", "-").replace("–", "-")
+
+        if not instant:
+            cfg = self.configs.get(account_id)
+            if cfg and cfg.typing_enabled:
+                await asyncio.sleep(2)
+                t_min = cfg.typing_min_seconds
+                t_max = max(cfg.typing_max_seconds, t_min)
+                typing_duration = random.uniform(t_min, t_max)
+                try:
+                    async with client.action(group, "typing"):
+                        await asyncio.sleep(typing_duration)
+                except Exception:
+                    pass
+
+        cfg = self.configs.get(account_id)
+        link_preview = not (cfg.link_preview_disabled if cfg else False)
+        await asyncio.wait_for(
+            client.send_message(group, text, reply_to=reply_to_id, link_preview=link_preview),
+            timeout=60,
+        )
+
+        return {"status": "commented", "account_id": account_id, "channel": clean, "post_id": post_id}
+
     async def mark_read(self, account_id: str, chat_id: int) -> None:
         if account_id not in self.clients:
             raise ValueError(f"Аккаунт '{account_id}' не найден")
