@@ -1334,6 +1334,20 @@ class AccountManager:
             })
         return result
 
+    @staticmethod
+    def _parse_channel(channel: str):
+        """Извлекает идентификатор канала из любого формата ссылки."""
+        import re
+        url = channel.strip()
+        if re.match(r'^-?\d+$', url):
+            return int(url)
+        if re.search(r't\.me/(\+|joinchat/)', url):
+            return url
+        m = re.search(r't\.me/([a-zA-Z0-9_]+)', url)
+        if m:
+            return m.group(1)
+        return url.lstrip('@')
+
     async def get_channel_last_post(self, account_id: str, channel: str) -> Optional[dict]:
         """Получить последний пост канала с текстом."""
         if account_id not in self.clients:
@@ -1342,11 +1356,11 @@ class AccountManager:
             raise ValueError(f"Аккаунт '{account_id}' не авторизован")
 
         client = self.clients[account_id]
-        clean = channel.strip().lstrip("@")
+        clean = self._parse_channel(channel)
         try:
             entity = await asyncio.wait_for(client.get_entity(clean), timeout=30)
         except Exception as e:
-            raise ValueError(f"Не удалось резолвить канал @{clean}: {e}")
+            raise ValueError(f"Не удалось резолвить канал '{clean}': {e}")
 
         msgs = await client.get_messages(entity, limit=10)
 
@@ -1370,12 +1384,12 @@ class AccountManager:
             raise ValueError(f"Аккаунт '{account_id}' не авторизован")
 
         client = self.clients[account_id]
-        clean = channel.strip().lstrip("@")
+        clean = self._parse_channel(channel)
 
         try:
             channel_entity = await asyncio.wait_for(client.get_entity(clean), timeout=30)
         except Exception as e:
-            raise ValueError(f"Не удалось резолвить канал @{clean}: {e}")
+            raise ValueError(f"Не удалось резолвить канал '{clean}': {e}")
 
         from telethon.tl.functions.messages import GetDiscussionMessageRequest
         try:
