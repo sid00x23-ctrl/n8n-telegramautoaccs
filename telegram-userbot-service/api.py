@@ -444,7 +444,7 @@ def create_app(manager: AccountManager, proxy_pool=None, commenting_manager: Opt
             await commenting_manager.logout(account_id)
             return {"status": "deleted", "account_id": account_id}
 
-        @app.get("/commenting/channel/{channel}/last_post", tags=["commenting"])
+        @app.get("/commenting/last_post", tags=["commenting"])
         async def commenting_get_last_post(channel: str, account_id: str):
             """
             Получить последний пост канала с текстом.
