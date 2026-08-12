@@ -1,27 +1,23 @@
 #!/bin/bash
 set -e
 
-REPO_DIR="/opt/botrassilka"
-VENV="$REPO_DIR/telegram-userbot-service/.venv/bin/pip"
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+VENV="$REPO_DIR/telegram-userbot-service/.venv"
+
+echo "==> repo: $REPO_DIR"
 
 echo "==> git pull"
 cd "$REPO_DIR"
 git pull origin main
 
-echo "==> pip install -r requirements.txt"
-"$VENV" install -r "$REPO_DIR/telegram-userbot-service/requirements.txt" --quiet
+echo "==> pip install"
+"$VENV/bin/pip" install -r "$REPO_DIR/telegram-userbot-service/requirements.txt" --quiet
 
-echo "==> pm2-logrotate"
-if ! pm2 list | grep -q pm2-logrotate; then
-  pm2 install pm2-logrotate --silent
-fi
-pm2 set pm2-logrotate:max_size 20M
-pm2 set pm2-logrotate:retain 3
-pm2 set pm2-logrotate:compress true
-pm2 set pm2-logrotate:dateFormat YYYY-MM-DD
+echo "==> pip install (portal)"
+"$REPO_DIR/portal/.venv/bin/pip" install -r "$REPO_DIR/portal/requirements.txt" --quiet
 
 echo "==> pm2 restart"
-pm2 restart portal userbot
+pm2 restart ecosystem.config.js --update-env
 
 echo "==> done"
 pm2 list

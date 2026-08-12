@@ -1,4 +1,4 @@
-const REPO = '/home/n8n-telegramautoaccs';
+const REPO = __dirname;
 
 module.exports = {
   apps: [
