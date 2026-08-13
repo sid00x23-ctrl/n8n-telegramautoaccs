@@ -1335,10 +1335,10 @@ class AccountManager:
         return result
 
     @staticmethod
-    def _parse_channel(channel: str):
+    def _parse_channel(channel):
         """Извлекает идентификатор канала из любого формата ссылки."""
         import re
-        url = channel.strip()
+        url = str(channel).strip()
         if re.match(r'^-?\d+$', url):
             n = int(url)
             # Положительный числовой ID — это channel_id, передаём как PeerChannel
