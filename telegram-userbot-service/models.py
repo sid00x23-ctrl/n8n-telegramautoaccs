@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Union
 
 
 class SendMessageRequest(BaseModel):
@@ -97,8 +97,8 @@ class ProxySettingsRequest(BaseModel):
 
 
 class CommentRequest(BaseModel):
-    account_id: str           # ID commenting-аккаунта
-    channel: str              # @username канала (можно без @)
-    post_id: int              # ID поста в канале
-    text: str                 # текст комментария
-    instant: bool = False     # если True — пропускает паузу и typing
+    account_id: str                # ID commenting-аккаунта
+    channel: Union[str, int]       # @username или числовой ID канала
+    post_id: int                   # ID поста в канале
+    text: str                      # текст комментария
+    instant: bool = False          # если True — пропускает паузу и typing
