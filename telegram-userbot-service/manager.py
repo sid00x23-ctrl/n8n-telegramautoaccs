@@ -25,7 +25,7 @@ from telethon.errors import (
 from telethon.tl.functions.auth import ResendCodeRequest
 from telethon.tl.functions.messages import SendReactionRequest
 from telethon.tl.types import (
-    User, PeerUser, ReactionEmoji,
+    User, PeerUser, PeerChannel, ReactionEmoji,
     UserStatusOnline, UserStatusOffline,
     UserStatusRecently, UserStatusLastWeek, UserStatusLastMonth, UserStatusEmpty,
 )
@@ -1340,7 +1340,12 @@ class AccountManager:
         import re
         url = channel.strip()
         if re.match(r'^-?\d+$', url):
-            return int(url)
+            n = int(url)
+            # Положительный числовой ID — это channel_id, передаём как PeerChannel
+            # чтобы Telethon не резолвил его как PeerUser
+            if n > 0:
+                return PeerChannel(channel_id=n)
+            return n
         if re.search(r't\.me/(\+|joinchat/)', url):
             return url
         m = re.search(r't\.me/([a-zA-Z0-9_]+)', url)
