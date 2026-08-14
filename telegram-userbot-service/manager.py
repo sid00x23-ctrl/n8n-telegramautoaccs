@@ -827,6 +827,9 @@ class AccountManager:
                             try:
                                 entity = await asyncio.wait_for(client.get_entity(clean_username), timeout=30)
                                 logger.info(f"[{account_id}] Entity резолвнута через прокси {next_proxy['id'][:8]} @{clean_username} → id={entity.id}")
+                            except ValueError as retry_e:
+                                # Пользователь не существует — прокси тут ни при чём, сразу выходим
+                                raise ValueError(f"Пользователь @{clean_username} не найден") from retry_e
                             except (asyncio.TimeoutError, ConnectionError) as retry_e:
                                 logger.warning(f"[{account_id}] Прокси {next_proxy['id'][:8]} ошибка соединения: {retry_e}, пробуем следующий...")
                                 tried_proxy_ids.add(next_proxy["id"])
@@ -841,7 +844,10 @@ class AccountManager:
             if entity is None:
                 if chat_id is None:
                     raise ValueError("Необходимо указать chat_id или username/lastsender_id для определения получателя")
-                entity = await asyncio.wait_for(client.get_entity(PeerUser(chat_id)), timeout=30)
+                try:
+                    entity = await asyncio.wait_for(client.get_entity(PeerUser(chat_id)), timeout=30)
+                except ValueError:
+                    raise ValueError(f"Пользователь с chat_id={chat_id} не найден (нет диалога или кеша)")
 
             if not instant:
                 # 1. Отмечаем сообщение прочитанным
