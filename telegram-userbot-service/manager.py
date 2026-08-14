@@ -21,6 +21,7 @@ from telethon.errors import (
     PhoneCodeExpiredError,
     FloodWaitError,
     PeerFloodError,
+    AuthKeyDuplicatedError,
 )
 from telethon.tl.functions.auth import ResendCodeRequest
 from telethon.tl.functions.messages import SendReactionRequest
@@ -258,6 +259,12 @@ class AccountManager:
 
     async def start_all(self):
         """Подключить все сохранённые аккаунты."""
+        # Свежая проверка всех прокси перед назначением
+        if self.proxy_pool and self.proxy_pool.proxies:
+            logger.info(f"Проверяем {len(self.proxy_pool.proxies)} прокси перед стартом...")
+            result = await self.proxy_pool.check_all_proxies()
+            logger.info(f"Прокси готовы: {result['ok']}/{result['total']} рабочих")
+
         # Синхронизируем прокси из пула перед подключением клиентов
         if self.proxy_pool:
             for account_id, cfg in self.configs.items():
@@ -270,7 +277,18 @@ class AccountManager:
                     # Проверяем совместимость с Telethon перед назначением
                     try:
                         _parse_proxy(proxy["url"])
-                        cfg.proxy = proxy["url"]
+                        # Если cfg.proxy уже задан вручную через set_proxy — не перезаписываем.
+                        # Только синхронизируем пул с тем что уже в конфиге.
+                        if not cfg.proxy:
+                            cfg.proxy = proxy["url"]
+                        elif cfg.proxy != proxy["url"]:
+                            # cfg.proxy задан вручную — обновляем пул чтобы он знал актуальное назначение
+                            pool_proxy = next((p for p in self.proxy_pool.proxies if p["url"] == cfg.proxy), None)
+                            if pool_proxy:
+                                self.proxy_pool.assign_proxy_to_account(account_id, pool_proxy["id"])
+                            else:
+                                # Прокси из cfg нет в пуле — оставляем cfg.proxy как есть, убираем из пула
+                                self.proxy_pool.unassign_account(account_id)
                     except ValueError as e:
                         logger.warning(f"[{account_id}] Прокси {proxy['id'][:8]}... несовместим: {e} — оставляем без изменений")
             self._save_configs()
@@ -346,6 +364,13 @@ class AccountManager:
                 logger.warning(f"Аккаунт {account_id} не авторизован")
         except asyncio.TimeoutError as e:
             logger.error(f"Не удалось подключить {account_id}: таймаут подключения (прокси завис?)")
+            # Помечаем прокси как нерабочий в пуле (без failover — только статус error)
+            if self.proxy_pool and cfg and cfg.proxy:
+                cur = self.proxy_pool.get_account_proxy(account_id)
+                if cur:
+                    cur["status"] = "error"
+                    cur["error"] = "Таймаут при подключении аккаунта"
+                    self.proxy_pool._save()
         except Exception as e:
             logger.error(f"Не удалось подключить {account_id}: {e}")
 
@@ -848,6 +873,15 @@ class AccountManager:
             self._sent_chats.setdefault(account_id, set()).add(chat_id)
             self._save_sent_chats()
             return {"status": "sent", "account_id": account_id, "chat_id": chat_id}
+        except AuthKeyDuplicatedError as e:
+            self.authorized[account_id] = False
+            try:
+                await self.clients[account_id].disconnect()
+            except Exception:
+                pass
+            logger.error(f"[{account_id}] AuthKeyDuplicatedError при отправке — сессия инвалидирована")
+            await self._send_delivery_callback("error", account_id, chat_id, "AuthKeyDuplicated: сессия заблокирована Telegram")
+            raise ValueError(f"Аккаунт '{account_id}': сессия заблокирована Telegram (AuthKeyDuplicated). Требуется переавторизация.") from e
         except FloodWaitError as e:
             await self._send_delivery_callback("error", account_id, chat_id, f"FloodWait: {e.seconds} сек")
             raise ValueError(f"FloodWait: подождите {e.seconds} секунд") from e
@@ -946,6 +980,7 @@ class AccountManager:
                 await existing.disconnect()
             except Exception:
                 pass
+            await asyncio.sleep(5)  # Даём Telegram время закрыть старую сессию
         await self._connect_client(account_id, cfg.phone)
         logger.info(f"[{account_id}] Переподключён через новый прокси")
 
@@ -971,6 +1006,7 @@ class AccountManager:
                     await client.disconnect()
                 except Exception:
                     pass
+                await asyncio.sleep(5)  # Даём Telegram время закрыть старую сессию
             await self._connect_client(account_id, cfg.phone)
             self._proxy_errors.pop(account_id, None)
             logger.info(f"[{account_id}] Переключён на прокси {new_proxy['id'][:8]}...")
@@ -986,6 +1022,16 @@ class AccountManager:
         cfg.proxy = proxy_url
         self._save_configs()
         self._proxy_errors.pop(account_id, None)
+        # Синхронизируем proxy_pool с новым назначением
+        if self.proxy_pool:
+            if proxy_url:
+                pool_proxy = next((p for p in self.proxy_pool.proxies if p["url"] == proxy_url), None)
+                if pool_proxy:
+                    self.proxy_pool.assign_proxy_to_account(account_id, pool_proxy["id"])
+                else:
+                    self.proxy_pool.unassign_account(account_id)
+            else:
+                self.proxy_pool.unassign_account(account_id)
         # Переподключаем клиент с новым прокси
         client = self.clients.get(account_id)
         if client:
@@ -1310,7 +1356,16 @@ class AccountManager:
         kwargs: dict = {"limit": limit}
         if offset_id:
             kwargs["offset_id"] = offset_id
-        msgs = await client.get_messages(entity, **kwargs)
+        try:
+            msgs = await client.get_messages(entity, **kwargs)
+        except AuthKeyDuplicatedError:
+            self.authorized[account_id] = False
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+            logger.error(f"[{account_id}] AuthKeyDuplicatedError в get_messages — сессия инвалидирована")
+            raise ValueError(f"Аккаунт '{account_id}': сессия заблокирована Telegram (AuthKeyDuplicated). Требуется переавторизация.")
 
         # Получаем read_outbox_max_id — до какого исходящего собеседник прочитал
         read_outbox_max_id = 0

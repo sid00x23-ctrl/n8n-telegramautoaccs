@@ -127,11 +127,16 @@ class ProxyPool:
             return "Не удалось распарсить адрес прокси"
         host, port = hp
 
-        # Для MTProto прокси — проверяем decoded первый байт секрета (0xEE = Fake-TLS)
+        # Для MTProto прокси — Fake-TLS хэндшейк + реальный Telegram-тест
         if self._detect_type(url) == "mtproto":
             secret = self._get_mtproto_secret(url)
             if secret and self._is_fake_tls_secret(secret):
-                return await self._check_alive_fake_tls(host, port, secret, timeout)
+                # Шаг 1: Fake-TLS хэндшейк
+                tls_error = await self._check_alive_fake_tls(host, port, secret, timeout)
+                if tls_error:
+                    return tls_error
+                # Шаг 2: реальное Telegram-соединение через прокси
+                return await self._check_alive_telegram(url, timeout=20.0)
 
         # Для остальных — TCP-коннект
         try:
@@ -208,6 +213,65 @@ class ProxyPool:
                 await writer.wait_closed()
             except Exception:
                 pass
+
+    async def _check_alive_telegram(self, url: str, timeout: float = 20.0) -> Optional[str]:
+        """
+        Реальная проверка прокси через TelegramClient.connect().
+        Только так убеждаемся что MTProto трафик проходит до Telegram,
+        а не просто TLS-хэндшейк.
+        """
+        import tempfile
+        import os
+        try:
+            from manager import _parse_proxy
+            from config import settings as _settings
+        except Exception:
+            return None  # не можем проверить — считаем ок
+
+        try:
+            proxy, connection_class = _parse_proxy(url)
+        except Exception as e:
+            return f"Ошибка парсинга прокси: {e}"
+
+        tmp = tempfile.NamedTemporaryFile(suffix=".session", delete=False, dir="/tmp")
+        tmp.close()
+        try:
+            from telethon import TelegramClient
+            from telethon.network.connection import ConnectionTcpAbridged
+
+            kwargs = {}
+            if proxy:
+                kwargs["proxy"] = proxy
+            kwargs["connection"] = connection_class if connection_class else ConnectionTcpAbridged
+
+            client = TelegramClient(
+                tmp.name,
+                _settings.TELEGRAM_API_ID,
+                _settings.TELEGRAM_API_HASH,
+                connection_retries=1,
+                retry_delay=1,
+                **kwargs,
+            )
+            try:
+                await asyncio.wait_for(client.connect(), timeout=timeout)
+                if not client.is_connected():
+                    return "Telegram не ответил через прокси"
+                return None
+            except asyncio.TimeoutError:
+                return f"Таймаут Telegram-соединения через прокси ({timeout:.0f}с)"
+            except Exception as e:
+                return f"Ошибка Telegram-соединения: {e}"
+            finally:
+                try:
+                    await client.disconnect()
+                except Exception:
+                    pass
+        finally:
+            for suffix in ["", "-journal"]:
+                try:
+                    os.unlink(tmp.name + suffix)
+                except Exception:
+                    pass
 
     # ------------------------------------------------------------------ #
     #  CRUD                                                                 #

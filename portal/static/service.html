@@ -807,6 +807,16 @@
                           <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
                         </svg>
                       </button>` : ''}
+                      <button class="btn btn-ghost btn-sm" data-reauth="${esc(acc.account_id)}"
+                        data-phone="${esc(acc.phone || '')}"
+                        title="Переавторизовать аккаунт"
+                        style="${!acc.authorized ? 'color:#f59e0b' : ''}">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <circle cx="7.5" cy="15.5" r="5.5"/>
+                          <path d="M21 2l-9.6 9.6"/>
+                          <path d="M15.5 7.5l3 3L22 7l-3-3"/>
+                        </svg>
+                      </button>
                       <button class="btn btn-danger btn-sm" data-del="${esc(acc.account_id)}">Выйти</button>
                     </div>
                   </td>
@@ -899,6 +909,10 @@
         });
       });
 
+      area.querySelectorAll('[data-reauth]').forEach(btn => {
+        btn.addEventListener('click', () => openReauthModal(btn.dataset.reauth, btn.dataset.phone));
+      });
+
       area.querySelectorAll('[data-mailing]').forEach(btn => {
         btn.addEventListener('click', async () => {
           const accId = btn.dataset.mailing;
@@ -988,6 +1002,40 @@
       currentAccId = null;
     }
     function closePhoneModal() { hideEl('phoneModal'); currentAccId = null; }
+
+    async function openReauthModal(accId, phone) {
+      if (!phone) {
+        toast(`У аккаунта ${accId} не указан номер телефона`, 'err');
+        return;
+      }
+      showEl('phoneModal');
+      hideEl('phoneStep1', 'phoneStep2', 'phoneStep3');
+      hideEl('phoneStep1Err', 'phoneStep2Err', 'twofaWrap');
+      $('phoneCode').value = '';
+      $('phonePassword').value = '';
+      $('phoneAccId').value = accId;
+      $('phoneNumber').value = phone;
+      currentAccId = null;
+
+      // Показываем шаг 1 пока отправляем код
+      showEl('phoneStep1');
+      $('phoneSendCode').disabled = true;
+      showEl('phoneSendSpinner');
+
+      try {
+        const res = await api('POST', `/api/accounts/${encodeURIComponent(accId)}/auth/start`, { phone });
+        currentAccId = accId;
+        $('codeHint').textContent = res.message || 'Код отправлен';
+        hideEl('phoneStep1');
+        showEl('phoneStep2');
+      } catch (e) {
+        $('phoneStep1Err').textContent = e.message;
+        showEl('phoneStep1Err');
+      } finally {
+        $('phoneSendCode').disabled = false;
+        hideEl('phoneSendSpinner');
+      }
+    }
 
     $('addPhoneBtn').addEventListener('click', openPhoneModal);
     $('phoneCancel1').addEventListener('click', closePhoneModal);

@@ -157,6 +157,9 @@ def create_app(manager: AccountManager, proxy_pool=None, commenting_manager: Opt
             return await manager.get_messages(account_id, chat_id, limit, offset_id)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            logger.exception(f"[get_messages] {account_id}/{chat_id}: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
 
     @app.post("/accounts/{account_id}/dialogs/{chat_id}/read", tags=["messaging"])
     async def mark_read(account_id: str, chat_id: int):
@@ -165,6 +168,9 @@ def create_app(manager: AccountManager, proxy_pool=None, commenting_manager: Opt
             return {"ok": True}
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            logger.exception(f"[mark_read] {account_id}/{chat_id}: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
 
     @app.delete("/accounts/{account_id}/dialogs/{chat_id}/messages/{message_id}", tags=["messaging"])
     async def delete_message(account_id: str, chat_id: int, message_id: int):
