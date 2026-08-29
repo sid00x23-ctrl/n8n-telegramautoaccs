@@ -1,0 +1,1253 @@
+{
+  "updatedAt": "2026-08-14T08:18:20.342Z",
+  "createdAt": "2026-08-12T12:46:46.216Z",
+  "id": "63yX7XTC0rc1FF1W",
+  "name": "Telegram Channel Commenting",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "node-01",
+      "name": "Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -144,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:8000/commenting/accounts",
+        "options": {}
+      },
+      "id": "node-02",
+      "name": "Get Commenting Accounts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        48,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const all = $input.all().map(i => i.json);\nconst available = all.filter(a =>\n  a.connected && a.authorized && a.available && !a.banned_until\n);\nreturn [{ json: { accounts: available } }];"
+      },
+      "id": "node-03",
+      "name": "Filter Accounts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c001",
+              "leftValue": "={{ $json.accounts.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-04",
+      "name": "Has Accounts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        480,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1cIoiVa3upTs5pY55VxqTGG4iJ2LwDJ3XAfc0Lr_QbaY",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cIoiVa3upTs5pY55VxqTGG4iJ2LwDJ3XAfc0Lr_QbaY/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "node-05",
+      "name": "Get Channels",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "node-06",
+      "name": "Split Channels",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        944,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first().json;\nconst accounts = $('Filter Accounts').first().json.accounts;\n\nconst channelUrl = row.channel_url || '';\n\n// Случайный аккаунт\nconst account = accounts[Math.floor(Math.random() * accounts.length)];\nconst account_id = account.account_id;\n\nreturn [{\n  json: {\n    channel_url: channelUrl,\n    channel: channelUrl,\n    account_id,\n    last_comment_date: row.last_comment_date || null,\n    comment_count: parseInt(row.comment_count) || 0,\n  }\n}];"
+      },
+      "id": "node-07",
+      "name": "Prepare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'http://127.0.0.1:8000/commenting/last_post?channel=' + encodeURIComponent($json.channel) + '&account_id=' + $json.account_id }}",
+        "options": {}
+      },
+      "id": "node-13",
+      "name": "Get Last Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const postResponse = $input.first().json;\nconst prepared = $('Prepare').first().json;\n\nconst post = postResponse.post || null;\nconst lastCommentDate = prepared.last_comment_date;\nconst shouldComment = post !== null && (!lastCommentDate || new Date(post.date) > new Date(lastCommentDate));\n\nreturn [{\n  json: {\n    channel_url: prepared.channel_url,\n    channel: prepared.channel,\n    account_id: prepared.account_id,\n    last_comment_date: lastCommentDate,\n    comment_count: prepared.comment_count,\n    post,\n    should_comment: Boolean(shouldComment),\n  }\n}];"
+      },
+      "id": "node-14",
+      "name": "Check Duplicate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/commenting/send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ account_id: $('Check Duplicate').first().json.account_id, channel: $('Check Duplicate').first().json.channel, post_id: $('Check Duplicate').first().json.post.post_id, text: $json.text }) }}",
+        "options": {}
+      },
+      "id": "node-10",
+      "name": "Send Comment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2368,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c003",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "commented",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-11",
+      "name": "Sent OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2576,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1cIoiVa3upTs5pY55VxqTGG4iJ2LwDJ3XAfc0Lr_QbaY",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cIoiVa3upTs5pY55VxqTGG4iJ2LwDJ3XAfc0Lr_QbaY/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "channel_url": "={{ $('Check Duplicate').first().json.channel_url }}",
+            "last_comment_date": "={{ new Date().toISOString() }}",
+            "comment_count": "={{ parseInt($('Check Duplicate').first().json.comment_count || 0) + 1 }}"
+          },
+          "matchingColumns": [
+            "channel_url"
+          ],
+          "schema": [
+            {
+              "id": "channel_url",
+              "displayName": "channel_url",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "last_comment_date",
+              "displayName": "last_comment_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "comment_count",
+              "displayName": "comment_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-12",
+      "name": "Update Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2864,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.post.text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Ты получил текст поста, тебе нужно его проккоментировать одним коротким предложением по теме. как человек, с маленькой буквы без точки в конце. "
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        2000,
+        288
+      ],
+      "id": "f3d04a7d-aae2-401f-ab12-035113af851f",
+      "name": "Basic LLM Chain",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {
+          "maxRetries": 3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        2032,
+        560
+      ],
+      "id": "2f44b378-2dd2-42c8-aed3-5416ceead6a3",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YRNER6ASeGb1i8yE",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3040,
+        304
+      ],
+      "id": "f05a3b0c-de3d-404f-bb08-03e607dd1b38",
+      "name": "Wait",
+      "webhookId": "7a085f3c-b524-4cb8-9605-221648b3782a"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 3,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c1b5aa56-1d96-4f42-b7ee-b202ecb9cee1",
+              "leftValue": "={{ $json.post.has_discussion }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c2a6bb67-2e07-5g53-c8ff-c313fdc0ffe2",
+              "leftValue": "={{ $json.should_comment }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1776,
+        304
+      ],
+      "id": "5ff392d2-9af9-446d-b213-5b220f78c9a6",
+      "name": "If"
+    }
+  ],
+  "connections": {
+    "Every Hour": {
+      "main": [
+        [
+          {
+            "node": "Get Commenting Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Commenting Accounts": {
+      "main": [
+        [
+          {
+            "node": "Filter Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Accounts": {
+      "main": [
+        [
+          {
+            "node": "Has Accounts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Accounts?": {
+      "main": [
+        [
+          {
+            "node": "Get Channels",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Get Channels": {
+      "main": [
+        [
+          {
+            "node": "Split Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Channels": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Prepare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare": {
+      "main": [
+        [
+          {
+            "node": "Get Last Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Last Post": {
+      "main": [
+        [
+          {
+            "node": "Check Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Duplicate": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Send Comment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Comment": {
+      "main": [
+        [
+          {
+            "node": "Sent OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sent OK?": {
+      "main": [
+        [
+          {
+            "node": "Update Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Row": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Split Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Every Hour": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "55e87c46-f0e7-4044-8cb8-9c91896c795f",
+  "activeVersionId": "55e87c46-f0e7-4044-8cb8-9c91896c795f",
+  "versionCounter": 118,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-08-12T12:46:46.251Z",
+      "createdAt": "2026-08-12T12:46:46.251Z",
+      "role": "workflow:owner",
+      "workflowId": "63yX7XTC0rc1FF1W",
+      "projectId": "FuB2P81JUmVyRc9b",
+      "project": {
+        "updatedAt": "2026-07-10T11:52:37.043Z",
+        "createdAt": "2026-07-10T11:51:07.140Z",
+        "id": "FuB2P81JUmVyRc9b",
+        "name": "Anna Anna@gmail.com <anna@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-08-14T08:18:20.348Z",
+    "createdAt": "2026-08-14T08:18:20.348Z",
+    "versionId": "55e87c46-f0e7-4044-8cb8-9c91896c795f",
+    "workflowId": "63yX7XTC0rc1FF1W",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours"
+              }
+            ]
+          }
+        },
+        "id": "node-01",
+        "name": "Every Hour",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          -144,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "url": "http://127.0.0.1:8000/commenting/accounts",
+          "options": {}
+        },
+        "id": "node-02",
+        "name": "Get Commenting Accounts",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          48,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const all = $input.all().map(i => i.json);\nconst available = all.filter(a =>\n  a.connected && a.authorized && a.available && !a.banned_until\n);\nreturn [{ json: { accounts: available } }];"
+        },
+        "id": "node-03",
+        "name": "Filter Accounts",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          272,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "c001",
+                "leftValue": "={{ $json.accounts.length }}",
+                "rightValue": 0,
+                "operator": {
+                  "type": "number",
+                  "operation": "gt"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "node-04",
+        "name": "Has Accounts?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          480,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "documentId": {
+            "__rl": true,
+            "value": "1cIoiVa3upTs5pY55VxqTGG4iJ2LwDJ3XAfc0Lr_QbaY",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "gid=0",
+            "mode": "list",
+            "cachedResultName": "Лист1",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cIoiVa3upTs5pY55VxqTGG4iJ2LwDJ3XAfc0Lr_QbaY/edit#gid=0"
+          },
+          "options": {}
+        },
+        "id": "node-05",
+        "name": "Get Channels",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          720,
+          304
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "pUUUlMTR22IlRpbY",
+            "name": "Google Sheets account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "node-06",
+        "name": "Split Channels",
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          944,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const row = $input.first().json;\nconst accounts = $('Filter Accounts').first().json.accounts;\n\nconst channelUrl = row.channel_url || '';\n\n// Случайный аккаунт\nconst account = accounts[Math.floor(Math.random() * accounts.length)];\nconst account_id = account.account_id;\n\nreturn [{\n  json: {\n    channel_url: channelUrl,\n    channel: channelUrl,\n    account_id,\n    last_comment_date: row.last_comment_date || null,\n    comment_count: parseInt(row.comment_count) || 0,\n  }\n}];"
+        },
+        "id": "node-07",
+        "name": "Prepare",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1152,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "url": "={{ 'http://127.0.0.1:8000/commenting/last_post?channel=' + encodeURIComponent($json.channel) + '&account_id=' + $json.account_id }}",
+          "options": {}
+        },
+        "id": "node-13",
+        "name": "Get Last Post",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1344,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const postResponse = $input.first().json;\nconst prepared = $('Prepare').first().json;\n\nconst post = postResponse.post || null;\nconst lastCommentDate = prepared.last_comment_date;\nconst shouldComment = post !== null && (!lastCommentDate || new Date(post.date) > new Date(lastCommentDate));\n\nreturn [{\n  json: {\n    channel_url: prepared.channel_url,\n    channel: prepared.channel,\n    account_id: prepared.account_id,\n    last_comment_date: lastCommentDate,\n    comment_count: prepared.comment_count,\n    post,\n    should_comment: Boolean(shouldComment),\n  }\n}];"
+        },
+        "id": "node-14",
+        "name": "Check Duplicate",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1616,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://127.0.0.1:8000/commenting/send",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ account_id: $('Check Duplicate').first().json.account_id, channel: $('Check Duplicate').first().json.channel, post_id: $('Check Duplicate').first().json.post.post_id, text: $json.text }) }}",
+          "options": {}
+        },
+        "id": "node-10",
+        "name": "Send Comment",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2368,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "c003",
+                "leftValue": "={{ $json.status }}",
+                "rightValue": "commented",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "node-11",
+        "name": "Sent OK?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2576,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "documentId": {
+            "__rl": true,
+            "value": "1cIoiVa3upTs5pY55VxqTGG4iJ2LwDJ3XAfc0Lr_QbaY",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "gid=0",
+            "mode": "list",
+            "cachedResultName": "Лист1",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cIoiVa3upTs5pY55VxqTGG4iJ2LwDJ3XAfc0Lr_QbaY/edit#gid=0"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "channel_url": "={{ $('Check Duplicate').first().json.channel_url }}",
+              "last_comment_date": "={{ new Date().toISOString() }}",
+              "comment_count": "={{ parseInt($('Check Duplicate').first().json.comment_count || 0) + 1 }}"
+            },
+            "matchingColumns": [
+              "channel_url"
+            ],
+            "schema": [
+              {
+                "id": "channel_url",
+                "displayName": "channel_url",
+                "required": false,
+                "defaultMatch": true,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "last_comment_date",
+                "displayName": "last_comment_date",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": false,
+                "removed": false
+              },
+              {
+                "id": "comment_count",
+                "displayName": "comment_count",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": false,
+                "removed": false
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "node-12",
+        "name": "Update Row",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          2864,
+          304
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "pUUUlMTR22IlRpbY",
+            "name": "Google Sheets account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "={{ $json.post.text }}",
+          "messages": {
+            "messageValues": [
+              {
+                "message": "Ты получил текст поста, тебе нужно его проккоментировать одним коротким предложением по теме. как человек, с маленькой буквы без точки в конце. "
+              }
+            ]
+          },
+          "batching": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.chainLlm",
+        "typeVersion": 1.9,
+        "position": [
+          2000,
+          288
+        ],
+        "id": "f3d04a7d-aae2-401f-ab12-035113af851f",
+        "name": "Basic LLM Chain",
+        "retryOnFail": true,
+        "waitBetweenTries": 3000
+      },
+      {
+        "parameters": {
+          "model": "deepseek-v4-flash",
+          "options": {
+            "maxRetries": 3
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+        "typeVersion": 1,
+        "position": [
+          2032,
+          560
+        ],
+        "id": "2f44b378-2dd2-42c8-aed3-5416ceead6a3",
+        "name": "DeepSeek Chat Model",
+        "credentials": {
+          "deepSeekApi": {
+            "id": "YRNER6ASeGb1i8yE",
+            "name": "DeepSeek account"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          3040,
+          304
+        ],
+        "id": "f05a3b0c-de3d-404f-bb08-03e607dd1b38",
+        "name": "Wait",
+        "webhookId": "7a085f3c-b524-4cb8-9605-221648b3782a"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "version": 3,
+              "leftValue": "",
+              "caseSensitive": true,
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "c1b5aa56-1d96-4f42-b7ee-b202ecb9cee1",
+                "leftValue": "={{ $json.post.has_discussion }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              },
+              {
+                "id": "c2a6bb67-2e07-5g53-c8ff-c313fdc0ffe2",
+                "leftValue": "={{ $json.should_comment }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          1776,
+          304
+        ],
+        "id": "5ff392d2-9af9-446d-b213-5b220f78c9a6",
+        "name": "If"
+      }
+    ],
+    "connections": {
+      "Every Hour": {
+        "main": [
+          [
+            {
+              "node": "Get Commenting Accounts",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Commenting Accounts": {
+        "main": [
+          [
+            {
+              "node": "Filter Accounts",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filter Accounts": {
+        "main": [
+          [
+            {
+              "node": "Has Accounts?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Accounts?": {
+        "main": [
+          [
+            {
+              "node": "Get Channels",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "Get Channels": {
+        "main": [
+          [
+            {
+              "node": "Split Channels",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Split Channels": {
+        "main": [
+          [],
+          [
+            {
+              "node": "Prepare",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare": {
+        "main": [
+          [
+            {
+              "node": "Get Last Post",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Last Post": {
+        "main": [
+          [
+            {
+              "node": "Check Duplicate",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Duplicate": {
+        "main": [
+          [
+            {
+              "node": "If",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "DeepSeek Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Basic LLM Chain",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Basic LLM Chain": {
+        "main": [
+          [
+            {
+              "node": "Send Comment",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Comment": {
+        "main": [
+          [
+            {
+              "node": "Sent OK?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Sent OK?": {
+        "main": [
+          [
+            {
+              "node": "Update Row",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Split Channels",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Row": {
+        "main": [
+          [
+            {
+              "node": "Wait",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait": {
+        "main": [
+          [
+            {
+              "node": "Split Channels",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If": {
+        "main": [
+          [
+            {
+              "node": "Basic LLM Chain",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Split Channels",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Anna Anna@gmail.com",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-08-14T08:18:20.589Z",
+        "id": 788,
+        "workflowId": "63yX7XTC0rc1FF1W",
+        "versionId": "55e87c46-f0e7-4044-8cb8-9c91896c795f",
+        "event": "activated",
+        "userId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      },
+      {
+        "createdAt": "2026-08-14T08:18:20.504Z",
+        "id": 787,
+        "workflowId": "63yX7XTC0rc1FF1W",
+        "versionId": "55e87c46-f0e7-4044-8cb8-9c91896c795f",
+        "event": "deactivated",
+        "userId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      }
+    ]
+  }
+}

@@ -580,12 +580,13 @@
     }
   },
   "meta": null,
+  "nodeGroups": [],
   "pinData": {},
   "versionId": "319bc430-4bdc-4a84-8e6a-d5f98137db84",
   "activeVersionId": null,
   "versionCounter": 28,
   "triggerCount": 1,
-  "tags": [],
+  "sourceWorkflowId": null,
   "shared": [
     {
       "updatedAt": "2026-07-28T12:38:06.556Z",
@@ -601,8 +602,11 @@
         "type": "personal",
         "icon": null,
         "description": null,
+        "customTelemetryTags": [],
         "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
       }
     }
-  ]
+  ],
+  "tags": [],
+  "activeVersion": null
 }

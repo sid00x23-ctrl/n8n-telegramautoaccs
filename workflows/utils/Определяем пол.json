@@ -444,12 +444,13 @@
   "meta": {
     "templateCredsSetupCompleted": true
   },
+  "nodeGroups": [],
   "pinData": {},
   "versionId": "68c4cb47-fa05-49c5-ae5c-16a17d11b7e7",
   "activeVersionId": null,
   "versionCounter": 79,
   "triggerCount": 0,
-  "tags": [],
+  "sourceWorkflowId": null,
   "shared": [
     {
       "updatedAt": "2026-07-30T08:40:09.798Z",
@@ -465,8 +466,11 @@
         "type": "personal",
         "icon": null,
         "description": null,
+        "customTelemetryTags": [],
         "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
       }
     }
-  ]
+  ],
+  "tags": [],
+  "activeVersion": null
 }

@@ -86,12 +86,13 @@
   },
   "staticData": null,
   "meta": null,
+  "nodeGroups": [],
   "pinData": null,
   "versionId": "4f86b65c-0c7a-47bf-a151-409d9ffac3cb",
   "activeVersionId": null,
   "versionCounter": 10,
   "triggerCount": 1,
-  "tags": [],
+  "sourceWorkflowId": null,
   "shared": [
     {
       "updatedAt": "2026-07-27T11:58:42.449Z",
@@ -107,8 +108,11 @@
         "type": "personal",
         "icon": null,
         "description": null,
+        "customTelemetryTags": [],
         "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
       }
     }
-  ]
+  ],
+  "tags": [],
+  "activeVersion": null
 }

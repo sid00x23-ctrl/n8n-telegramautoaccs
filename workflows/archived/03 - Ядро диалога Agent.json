@@ -197,19 +197,13 @@
   "meta": {
     "templateCredsSetupCompleted": true
   },
+  "nodeGroups": [],
   "pinData": {},
   "versionId": "574c1f5a-711c-4a28-aecd-3484e846433d",
   "activeVersionId": null,
   "versionCounter": 27,
   "triggerCount": 0,
-  "tags": [
-    {
-      "updatedAt": "2026-07-10T11:52:53.636Z",
-      "createdAt": "2026-07-10T11:52:53.636Z",
-      "id": "UEdNW1SrBJ1c8dzY",
-      "name": "AnastyMEETING"
-    }
-  ],
+  "sourceWorkflowId": null,
   "shared": [
     {
       "updatedAt": "2026-07-13T09:03:10.674Z",
@@ -225,8 +219,18 @@
         "type": "personal",
         "icon": null,
         "description": null,
+        "customTelemetryTags": [],
         "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
       }
     }
-  ]
+  ],
+  "tags": [
+    {
+      "updatedAt": "2026-07-10T11:52:53.636Z",
+      "createdAt": "2026-07-10T11:52:53.636Z",
+      "id": "UEdNW1SrBJ1c8dzY",
+      "name": "AnastyMEETING"
+    }
+  ],
+  "activeVersion": null
 }

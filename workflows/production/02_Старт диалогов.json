@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-05T12:01:47.283Z",
+  "updatedAt": "2026-08-14T12:08:02.900Z",
   "createdAt": "2026-07-29T09:42:52.128Z",
   "id": "hq4JulwMKDrmHZD8",
   "name": "02_Старт диалогов",
@@ -53,7 +53,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst seen = new Set();\nconst result = [];\n\nfor (const item of items) {\n  const userId  = item.json['User ID'];\n  const account = item.json['Аккаунт'];\n\n  if (!userId || String(userId).trim() === '') continue;\n  if (!account || String(account).trim() === '') continue;\n\n  // Один клиент на аккаунт за цикл\n  if (seen.has(account)) continue;\n  seen.add(account);\n\n  result.push(item);\n}\n\nconsole.log(`К отправке: ${result.length} (аккаунтов: ${seen.size})`);\nreturn result;"
+        "jsCode": "const items = $input.all();\nconst seen = new Set();\nconst result = [];\n\nfor (const item of items) {\n  const userId  = item.json['User ID'];\n  const account = item.json['Аккаунт'];\n\n  if (!userId || String(userId).trim() === '') continue;\n  if (!account || String(account).trim() === '') continue;\n\n  if (seen.has(account)) continue;\n  seen.add(account);\n\n  result.push(item);\n}\n\nconsole.log(`К отправке: ${result.length} (аккаунтов: ${seen.size})`);\nreturn result;"
       },
       "id": "9997c748-dd33-4aa1-b5b1-6913d2a1435a",
       "name": "По 1 клиенту на аккаунт",
@@ -284,8 +284,8 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        976,
-        368
+        1120,
+        1024
       ],
       "retryOnFail": true,
       "waitBetweenTries": 3000,
@@ -318,8 +318,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
       "typeVersion": 1,
       "position": [
-        96,
-        544
+        -16,
+        528
       ],
       "id": "584f3336-a16e-4f3c-9eac-1e4b99f338d7",
       "name": "DeepSeek Chat Model",
@@ -329,39 +329,6 @@
           "name": "DeepSeek account"
         }
       }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "version": 2,
-            "leftValue": "",
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "peerflood-check",
-              "leftValue": "={{ $json.detail }}",
-              "rightValue": "спам-баном",
-              "operator": {
-                "type": "string",
-                "operation": "contains"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "30d67cec-5556-4b00-a549-092f4f692e41",
-      "name": "PeerFlood?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        576,
-        464
-      ]
     },
     {
       "parameters": {
@@ -437,7 +404,7 @@
         "promptType": "define",
         "text": "=Имя: {{ $('Читаем новых клиентов').item.json['Имя(для рассылки)'] }}",
         "options": {
-          "systemMessage": "=Ты отправляешь приветственное сообщение от лица коуча женского пола. Немного перефразируй шаблон, пару слов, сохрани суть:\n\n<Шаблон>\n\"{input}, привет! Как ты себя чувствуешь?\\n\nХочу провести для тебя стратегическую коуч-сессию, ты как на это смотришь?\"\n</Шаблон>\n\n<Правила>\n- Выдай только ответ, без пояснений\n</Правила>\n\n<Пример>\nАлександр, привет! Как ты себя чувствуешь?\nХочу провести тебе стратегическую коуч-сессию, ты как на это смотришь?\n</Пример>"
+          "systemMessage": "=Ты отправляешь приветственное сообщение от лица коуча женского пола. Немного перефразируй шаблон, пару слов, сохрани суть:\n\n<Шаблон>\n\"{input}, привет! Как ты себя чувствуешь?\\n\nХочу провести тебе стратегическую коуч-сессию. Это бесплатно. Рассказать подробнее?\"\n</Шаблон>\n\n<Правила>\n- Выдай только ответ, без пояснений\n</Правила>\n\n<Пример>\nАлександр, привет! Как ты себя чувствуешь?\\n\nХочу провести тебе стратегическую коуч-сессию. Это бесплатно. Рассказать подробнее?\n</Пример>"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -456,8 +423,8 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        1120,
-        608
+        1296,
+        1024
       ],
       "id": "67b8f57e-6178-41f0-ac2e-c76a934d8b1e",
       "name": "Wait",
@@ -466,7 +433,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "={{ 'INSERT INTO n8n_chat_histories (session_id, message) VALUES (' + \"'\" + String($('Читаем новых клиентов').item.json['User ID']) + \"', '\" + JSON.stringify({type: 'ai', content: $('AI Приветствие').item.json.output, tool_calls: [], additional_kwargs: {}, response_metadata: {}, invalid_tool_calls: []}).replace(/'/g, \"''\") + \"'::jsonb)\" }}",
+        "query": "{{ 'INSERT INTO n8n_chat_histories (session_id, message) VALUES (' + \"'\" + String($('Читаем новых клиентов').item.json['User ID']) + \"', '\" + JSON.stringify({type: 'ai', content: $('AI Приветствие').item.json.output, tool_calls: [], additional_kwargs: {}, response_metadata: {}, invalid_tool_calls: []}).replace(/'/g, \"''\") + \"'::jsonb)\" }}",
         "options": {}
       },
       "id": "b1a2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -474,8 +441,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        784,
-        368
+        896,
+        1024
       ],
       "credentials": {
         "postgres": {
@@ -531,51 +498,6 @@
               "removed": false
             },
             {
-              "id": "Имя",
-              "displayName": "Имя",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Фамилия",
-              "displayName": "Фамилия",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Имя(для рассылки)",
-              "displayName": "Имя(для рассылки)",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Пол",
-              "displayName": "Пол",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Профессия",
-              "displayName": "Профессия",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
               "id": "Статус",
               "displayName": "Статус",
               "required": false,
@@ -583,71 +505,6 @@
               "display": true,
               "type": "string",
               "canBeUsedToMatch": true
-            },
-            {
-              "id": "Назначен",
-              "displayName": "Назначен",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Дата контакта",
-              "displayName": "Дата контакта",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Аккаунт",
-              "displayName": "Аккаунт",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Ссылка на профиль",
-              "displayName": "Ссылка на профиль",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Источник",
-              "displayName": "Источник",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Дата последнего сообщения (МСК)",
-              "displayName": "Дата последнего сообщения (МСК)",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "row_number",
-              "displayName": "row_number",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "canBeUsedToMatch": true,
-              "readOnly": true,
-              "removed": true
             }
           ],
           "attemptToConvertTypes": false,
@@ -660,8 +517,281 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        784,
-        544
+        928,
+        528
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 3,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI",
+          "mode": "list",
+          "cachedResultName": "SPB 2267",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 504117681,
+          "mode": "list",
+          "cachedResultName": "Участники",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit#gid=504117681"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "User ID": "={{ $('Читаем новых клиентов').item.json['User ID'] }}",
+            "Статус": "premiumerror"
+          },
+          "matchingColumns": [
+            "User ID"
+          ],
+          "schema": [
+            {
+              "id": "Username",
+              "displayName": "Username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Статус",
+              "displayName": "Статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "premium-error-gsheets",
+      "name": "Обновляем статус в Google Sheets2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        928,
+        720
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 3,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pUUUlMTR22IlRpbY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.detail }}",
+                    "rightValue": "спам-баном",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "1ebeccd8-b3e5-4469-8f69-cf93ce54c05a"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "PeerFlood"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.detail }}",
+                    "rightValue": "PRIVACY_PREMIUM_REQUIRED",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "8e25302d-5163-4f28-abd8-6dc9a83dd8b7"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "PremiumError"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d28b3391-5b1d-42d4-a31f-8de02e9884b7",
+                    "leftValue": "={{ $json.detail }}",
+                    "rightValue": "PAYMENT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "PAYMENT"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "c50219c6-6edd-4d93-bad7-36e807b99dcc",
+                    "leftValue": "={{ $json.detail }}",
+                    "rightValue": "Could not find the input entity for PeerUser",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Peer user"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "switch-error-node",
+      "name": "Тип ошибки?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        576,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI",
+          "mode": "list",
+          "cachedResultName": "SPB 2267",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 504117681,
+          "mode": "list",
+          "cachedResultName": "Участники",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit#gid=504117681"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "User ID": "={{ $('Читаем новых клиентов').item.json['User ID'] }}",
+            "Статус": "usernotfound"
+          },
+          "matchingColumns": [
+            "User ID"
+          ],
+          "schema": [
+            {
+              "id": "Username",
+              "displayName": "Username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Статус",
+              "displayName": "Статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "626fccc9-0576-486a-bb3d-7ecf6798ec6a",
+      "name": "Обновляем статус в Google Sheets3",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        944,
+        304
       ],
       "retryOnFail": true,
       "waitBetweenTries": 3000,
@@ -741,24 +871,6 @@
         ]
       ]
     },
-    "PeerFlood?": {
-      "main": [
-        [
-          {
-            "node": "Обновляем статус в Google Sheets1",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Сохраняем приветствие в память",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Split In Batches": {
       "main": [
         [],
@@ -775,7 +887,7 @@
       "main": [
         [
           {
-            "node": "PeerFlood?",
+            "node": "Тип ошибки?",
             "type": "main",
             "index": 0
           }
@@ -825,6 +937,67 @@
           }
         ]
       ]
+    },
+    "Обновляем статус в Google Sheets2": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Тип ошибки?": {
+      "main": [
+        [
+          {
+            "node": "Обновляем статус в Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Обновляем статус в Google Sheets2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Обновляем статус в Google Sheets2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Обновляем статус в Google Sheets3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Сохраняем приветствие в память",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Обновляем статус в Google Sheets3": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -837,12 +1010,13 @@
   "meta": {
     "templateCredsSetupCompleted": true
   },
+  "nodeGroups": [],
   "pinData": {},
-  "versionId": "9c3e9b85-5a85-4f09-a548-4320ce741ba1",
-  "activeVersionId": "9c3e9b85-5a85-4f09-a548-4320ce741ba1",
-  "versionCounter": 342,
+  "versionId": "c60f4820-0463-4185-8040-0055157aabbf",
+  "activeVersionId": "c60f4820-0463-4185-8040-0055157aabbf",
+  "versionCounter": 404,
   "triggerCount": 0,
-  "tags": [],
+  "sourceWorkflowId": null,
   "shared": [
     {
       "updatedAt": "2026-07-29T09:42:52.135Z",
@@ -858,8 +1032,1025 @@
         "type": "personal",
         "icon": null,
         "description": null,
+        "customTelemetryTags": [],
         "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
       }
     }
-  ]
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-08-14T12:08:04.000Z",
+    "createdAt": "2026-08-14T12:08:02.913Z",
+    "versionId": "c60f4820-0463-4185-8040-0055157aabbf",
+    "workflowId": "hq4JulwMKDrmHZD8",
+    "nodes": [
+      {
+        "parameters": {
+          "documentId": {
+            "__rl": true,
+            "value": "1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI",
+            "mode": "list",
+            "cachedResultName": "SPB 2267",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": 504117681,
+            "mode": "list",
+            "cachedResultName": "Участники",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit#gid=504117681"
+          },
+          "filtersUI": {
+            "values": [
+              {
+                "lookupColumn": "Статус",
+                "lookupValue": "assigned"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "de4807af-e9e1-4599-b316-163ceb926133",
+        "name": "Читаем новых клиентов",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          -432,
+          544
+        ],
+        "retryOnFail": true,
+        "waitBetweenTries": 3000,
+        "maxTries": 3,
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "pUUUlMTR22IlRpbY",
+            "name": "Google Sheets account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst seen = new Set();\nconst result = [];\n\nfor (const item of items) {\n  const userId  = item.json['User ID'];\n  const account = item.json['Аккаунт'];\n\n  if (!userId || String(userId).trim() === '') continue;\n  if (!account || String(account).trim() === '') continue;\n\n  if (seen.has(account)) continue;\n  seen.add(account);\n\n  result.push(item);\n}\n\nconsole.log(`К отправке: ${result.length} (аккаунтов: ${seen.size})`);\nreturn result;"
+        },
+        "id": "9997c748-dd33-4aa1-b5b1-6913d2a1435a",
+        "name": "По 1 клиенту на аккаунт",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -560,
+          368
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "0dcbe22d-18f0-48e8-8edb-1d1c9a1e91fa",
+                "leftValue": "={{ $json['Статус'] }}",
+                "rightValue": "assigned",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "a9096f13-d6cc-40bf-9984-c127135e82ce",
+        "name": "Есть клиенты?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -336,
+          368
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "documentId": {
+            "__rl": true,
+            "value": "1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI",
+            "mode": "list",
+            "cachedResultName": "SPB 2267",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": 504117681,
+            "mode": "list",
+            "cachedResultName": "Участники",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit#gid=504117681"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "User ID": "={{ $('Отправляем приветствие через сервис').item.json.chat_id }}",
+              "Статус": "contacted"
+            },
+            "matchingColumns": [
+              "User ID"
+            ],
+            "schema": [
+              {
+                "id": "Username",
+                "displayName": "Username",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "User ID",
+                "displayName": "User ID",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "Имя",
+                "displayName": "Имя",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "Фамилия",
+                "displayName": "Фамилия",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "Имя(для рассылки)",
+                "displayName": "Имя(для рассылки)",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "Пол",
+                "displayName": "Пол",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "Профессия",
+                "displayName": "Профессия",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "Статус",
+                "displayName": "Статус",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Назначен",
+                "displayName": "Назначен",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "Дата контакта",
+                "displayName": "Дата контакта",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "Аккаунт",
+                "displayName": "Аккаунт",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Ссылка на профиль",
+                "displayName": "Ссылка на профиль",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "Источник",
+                "displayName": "Источник",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "Дата последнего сообщения (МСК)",
+                "displayName": "Дата последнего сообщения (МСК)",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "row_number",
+                "displayName": "row_number",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true,
+                "readOnly": true,
+                "removed": true
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "id": "2378263a-35b5-47fb-9a87-2cf500763c77",
+        "name": "Обновляем статус в Google Sheets",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          1120,
+          1024
+        ],
+        "retryOnFail": true,
+        "waitBetweenTries": 3000,
+        "maxTries": 3,
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "pUUUlMTR22IlRpbY",
+            "name": "Google Sheets account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "id": "06b48b1c-bed3-4945-996f-2d90c68c2a87",
+        "name": "Запуск из WF1",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          -832,
+          544
+        ]
+      },
+      {
+        "parameters": {
+          "model": "deepseek-v4-flash",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+        "typeVersion": 1,
+        "position": [
+          -16,
+          528
+        ],
+        "id": "584f3336-a16e-4f3c-9eac-1e4b99f338d7",
+        "name": "DeepSeek Chat Model",
+        "credentials": {
+          "deepSeekApi": {
+            "id": "YRNER6ASeGb1i8yE",
+            "name": "DeepSeek account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "966241f0-7334-4cb4-8017-8f1150a1538d",
+        "name": "Split In Batches",
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          -112,
+          368
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://127.0.0.1:8000/send",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "account_id",
+                "value": "={{ $('Есть клиенты?').item.json['Аккаунт'] }}"
+              },
+              {
+                "name": "chat_id",
+                "value": "={{ $('Читаем новых клиентов').item.json['User ID'] }}"
+              },
+              {
+                "name": "username",
+                "value": "={{ $('Есть клиенты?').item.json['Username'] || '' }}"
+              },
+              {
+                "name": "rate_limited",
+                "value": "true"
+              },
+              {
+                "name": "text",
+                "value": "={{ $('AI Приветствие').item.json.output }}"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "id": "9ae57710-4422-4572-9374-b14517cd477a",
+        "name": "Отправляем приветствие через сервис",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          400,
+          368
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Имя: {{ $('Читаем новых клиентов').item.json['Имя(для рассылки)'] }}",
+          "options": {
+            "systemMessage": "=Ты отправляешь приветственное сообщение от лица коуча женского пола. Немного перефразируй шаблон, пару слов, сохрани суть:\n\n<Шаблон>\n\"{input}, привет! Как ты себя чувствуешь?\\n\nХочу провести тебе стратегическую коуч-сессию. Это бесплатно. Рассказать подробнее?\"\n</Шаблон>\n\n<Правила>\n- Выдай только ответ, без пояснений\n</Правила>\n\n<Пример>\nАлександр, привет! Как ты себя чувствуешь?\\n\nХочу провести тебе стратегическую коуч-сессию. Это бесплатно. Рассказать подробнее?\n</Пример>"
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 3.1,
+        "position": [
+          96,
+          368
+        ],
+        "id": "e2762e7c-5f44-4f8c-9c2a-556c3bfee354",
+        "name": "AI Приветствие"
+      },
+      {
+        "parameters": {
+          "amount": "={{ Math.floor(Math.random() * (300 - 30 + 1)) + 30 }}"
+        },
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          1296,
+          1024
+        ],
+        "id": "67b8f57e-6178-41f0-ac2e-c76a934d8b1e",
+        "name": "Wait",
+        "webhookId": "15fdf32e-8d1f-4dd1-9e43-98cd14f26457"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "{{ 'INSERT INTO n8n_chat_histories (session_id, message) VALUES (' + \"'\" + String($('Читаем новых клиентов').item.json['User ID']) + \"', '\" + JSON.stringify({type: 'ai', content: $('AI Приветствие').item.json.output, tool_calls: [], additional_kwargs: {}, response_metadata: {}, invalid_tool_calls: []}).replace(/'/g, \"''\") + \"'::jsonb)\" }}",
+          "options": {}
+        },
+        "id": "b1a2c3d4-e5f6-7890-abcd-ef1234567890",
+        "name": "Сохраняем приветствие в память",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          896,
+          1024
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "Nz3cspbRJ5eUSNFW",
+            "name": "Postgres account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "documentId": {
+            "__rl": true,
+            "value": "1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI",
+            "mode": "list",
+            "cachedResultName": "SPB 2267",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": 504117681,
+            "mode": "list",
+            "cachedResultName": "Участники",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit#gid=504117681"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "User ID": "={{ $('Читаем новых клиентов').item.json['User ID'] }}",
+              "Статус": "errorspam"
+            },
+            "matchingColumns": [
+              "User ID"
+            ],
+            "schema": [
+              {
+                "id": "Username",
+                "displayName": "Username",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "User ID",
+                "displayName": "User ID",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "Статус",
+                "displayName": "Статус",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "id": "1ea6f43f-d43f-460e-aac8-4bad850ec6b8",
+        "name": "Обновляем статус в Google Sheets1",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          928,
+          528
+        ],
+        "retryOnFail": true,
+        "waitBetweenTries": 3000,
+        "maxTries": 3,
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "pUUUlMTR22IlRpbY",
+            "name": "Google Sheets account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "documentId": {
+            "__rl": true,
+            "value": "1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI",
+            "mode": "list",
+            "cachedResultName": "SPB 2267",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": 504117681,
+            "mode": "list",
+            "cachedResultName": "Участники",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit#gid=504117681"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "User ID": "={{ $('Читаем новых клиентов').item.json['User ID'] }}",
+              "Статус": "premiumerror"
+            },
+            "matchingColumns": [
+              "User ID"
+            ],
+            "schema": [
+              {
+                "id": "Username",
+                "displayName": "Username",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "User ID",
+                "displayName": "User ID",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "Статус",
+                "displayName": "Статус",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "id": "premium-error-gsheets",
+        "name": "Обновляем статус в Google Sheets2",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          928,
+          720
+        ],
+        "retryOnFail": true,
+        "waitBetweenTries": 3000,
+        "maxTries": 3,
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "pUUUlMTR22IlRpbY",
+            "name": "Google Sheets account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.detail }}",
+                      "rightValue": "спам-баном",
+                      "operator": {
+                        "type": "string",
+                        "operation": "contains"
+                      },
+                      "id": "1ebeccd8-b3e5-4469-8f69-cf93ce54c05a"
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "PeerFlood"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.detail }}",
+                      "rightValue": "PRIVACY_PREMIUM_REQUIRED",
+                      "operator": {
+                        "type": "string",
+                        "operation": "contains"
+                      },
+                      "id": "8e25302d-5163-4f28-abd8-6dc9a83dd8b7"
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "PremiumError"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  },
+                  "conditions": [
+                    {
+                      "id": "d28b3391-5b1d-42d4-a31f-8de02e9884b7",
+                      "leftValue": "={{ $json.detail }}",
+                      "rightValue": "PAYMENT",
+                      "operator": {
+                        "type": "string",
+                        "operation": "contains"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "PAYMENT"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  },
+                  "conditions": [
+                    {
+                      "id": "c50219c6-6edd-4d93-bad7-36e807b99dcc",
+                      "leftValue": "={{ $json.detail }}",
+                      "rightValue": "Could not find the input entity for PeerUser",
+                      "operator": {
+                        "type": "string",
+                        "operation": "contains"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "Peer user"
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": "extra"
+          }
+        },
+        "id": "switch-error-node",
+        "name": "Тип ошибки?",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          576,
+          352
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "documentId": {
+            "__rl": true,
+            "value": "1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI",
+            "mode": "list",
+            "cachedResultName": "SPB 2267",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": 504117681,
+            "mode": "list",
+            "cachedResultName": "Участники",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bu1JRPpEpFTo59nQ_bVoaZvOuZIMSAGlLNrCl5J0jnI/edit#gid=504117681"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "User ID": "={{ $('Читаем новых клиентов').item.json['User ID'] }}",
+              "Статус": "usernotfound"
+            },
+            "matchingColumns": [
+              "User ID"
+            ],
+            "schema": [
+              {
+                "id": "Username",
+                "displayName": "Username",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "User ID",
+                "displayName": "User ID",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "Статус",
+                "displayName": "Статус",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "id": "626fccc9-0576-486a-bb3d-7ecf6798ec6a",
+        "name": "Обновляем статус в Google Sheets3",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          944,
+          304
+        ],
+        "retryOnFail": true,
+        "waitBetweenTries": 3000,
+        "maxTries": 3,
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "pUUUlMTR22IlRpbY",
+            "name": "Google Sheets account"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Читаем новых клиентов": {
+        "main": [
+          [
+            {
+              "node": "По 1 клиенту на аккаунт",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "По 1 клиенту на аккаунт": {
+        "main": [
+          [
+            {
+              "node": "Есть клиенты?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Есть клиенты?": {
+        "main": [
+          [
+            {
+              "node": "Split In Batches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Обновляем статус в Google Sheets": {
+        "main": [
+          [
+            {
+              "node": "Wait",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Запуск из WF1": {
+        "main": [
+          [
+            {
+              "node": "Читаем новых клиентов",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "DeepSeek Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Приветствие",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Split In Batches": {
+        "main": [
+          [],
+          [
+            {
+              "node": "AI Приветствие",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Отправляем приветствие через сервис": {
+        "main": [
+          [
+            {
+              "node": "Тип ошибки?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Сохраняем приветствие в память": {
+        "main": [
+          [
+            {
+              "node": "Обновляем статус в Google Sheets",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Приветствие": {
+        "main": [
+          [
+            {
+              "node": "Отправляем приветствие через сервис",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait": {
+        "main": [
+          [
+            {
+              "node": "Split In Batches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Обновляем статус в Google Sheets1": {
+        "main": [
+          [
+            {
+              "node": "Split In Batches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Обновляем статус в Google Sheets2": {
+        "main": [
+          [
+            {
+              "node": "Split In Batches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Тип ошибки?": {
+        "main": [
+          [
+            {
+              "node": "Обновляем статус в Google Sheets1",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Обновляем статус в Google Sheets2",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Обновляем статус в Google Sheets2",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Обновляем статус в Google Sheets3",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Сохраняем приветствие в память",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Обновляем статус в Google Sheets3": {
+        "main": [
+          [
+            {
+              "node": "Split In Batches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Anna Anna@gmail.com",
+    "name": "Version c60f4820",
+    "description": "",
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-08-14T12:08:04.409Z",
+        "id": 792,
+        "workflowId": "hq4JulwMKDrmHZD8",
+        "versionId": "c60f4820-0463-4185-8040-0055157aabbf",
+        "event": "activated",
+        "userId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      }
+    ]
+  }
 }

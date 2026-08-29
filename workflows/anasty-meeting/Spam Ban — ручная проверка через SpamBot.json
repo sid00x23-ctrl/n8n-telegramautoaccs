@@ -1,0 +1,979 @@
+{
+  "updatedAt": "2026-08-14T11:48:56.678Z",
+  "createdAt": "2026-07-11T15:17:50.929Z",
+  "id": "bOatLaOvMa92Kpef",
+  "name": "Spam Ban — ручная проверка через SpamBot",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger-01",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:8000/accounts",
+        "options": {}
+      },
+      "id": "get-accounts-01",
+      "name": "HTTP: GET /accounts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -272,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-accounts-01",
+      "name": "Loop: аккаунты",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        0,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $('Loop: аккаунты').item.json.account_id }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "178220800"
+            },
+            {
+              "name": "text",
+              "value": "/start"
+            },
+            {
+              "name": "instant",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "spambot-send-01",
+      "name": "HTTP: /start → SpamBot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        240
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "id": "wait-5s-01",
+      "name": "Wait: 5 сек",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        240
+      ],
+      "webhookId": "b9e2f4a1-7c3d-4e8f-a0b2-5d9c1e3f6a8b"
+    },
+    {
+      "parameters": {
+        "url": "=http://127.0.0.1:8000/accounts/{{ $('Loop: аккаунты').item.json.account_id }}/dialogs/178220800/messages",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "spambot-read-01",
+      "name": "HTTP: читаем ответ SpamBot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        240
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const account_id = $('Loop: аккаунты').item.json.account_id;\nconst raw = $input.first().json;\n// API возвращает массив [{id, text, out, date, read}]\nconst msg = Array.isArray(raw) ? (raw[0] || {}) : (raw || {});\n// Берём входящее сообщение (out=false) от SpamBot\nconst text = (msg.out === false && msg.text) ? msg.text : '';\nreturn [{ json: { account_id, text } }];"
+      },
+      "id": "extract-text-01",
+      "name": "Code: извлекаем текст",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Извлеки дату окончания спам-бана из сообщения Telegram SpamBot. Верни ТОЛЬКО валидный JSON без markdown и пояснений: {\"banned_until\": \"<ISO 8601 UTC datetime>\", \"parsed\": true} если дата найдена, или {\"banned_until\": null, \"parsed\": false} если нет.\n\nСообщение SpamBot: {{ $json.text || 'пусто' }}",
+        "batching": {}
+      },
+      "id": "llm-chain-01",
+      "name": "Basic LLM Chain: парсим дату бана",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1168,
+        240
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const account_id = $('Code: извлекаем текст').item.json.account_id;\nconst raw = $input.first().json.text || $input.first().json.output || '';\ntry {\n  const cleaned = raw.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  const result = JSON.parse(cleaned);\n  const banned_until = result.banned_until || null;\n  return [{ json: { account_id, banned_until, parsed: !!banned_until } }];\n} catch (e) {\n  return [{ json: { account_id, banned_until: null, parsed: false, raw_text: raw.slice(0, 200) } }];\n}"
+      },
+      "id": "normalize-llm-01",
+      "name": "Code: нормализуем ответ LLM",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-parsed-01",
+              "leftValue": "={{ $json.parsed }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-date-01",
+      "name": "IF: дата бана получена?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://127.0.0.1:8000/accounts/{{ $json.account_id }}/spam_ban",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ banned_until: $json.banned_until }) }}",
+        "options": {}
+      },
+      "id": "update-ban-01",
+      "name": "HTTP: обновляем banned_until",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2144,
+        304
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://127.0.0.1:8000/accounts/{{ $json.account_id }}/spam_ban",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"banned_until\": null}",
+        "options": {}
+      },
+      "id": "clear-ban-01",
+      "name": "HTTP: снимаем бан (нет даты)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        448
+      ],
+      "id": "73567a95-2fc3-4a2d-ab46-f53f3ffd703d",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YRNER6ASeGb1i8yE",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -688,
+        240
+      ],
+      "id": "68b9dc13-1698-41f1-b21b-8099a1a1ab71",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        []
+      ]
+    },
+    "Loop: аккаунты": {
+      "main": [
+        [
+          {
+            "node": "HTTP: /start → SpamBot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: /start → SpamBot": {
+      "main": [
+        [
+          {
+            "node": "Wait: 5 сек",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait: 5 сек": {
+      "main": [
+        [
+          {
+            "node": "HTTP: читаем ответ SpamBot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: читаем ответ SpamBot": {
+      "main": [
+        [
+          {
+            "node": "Code: извлекаем текст",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: извлекаем текст": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain: парсим дату бана",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain: парсим дату бана": {
+      "main": [
+        [
+          {
+            "node": "Code: нормализуем ответ LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: нормализуем ответ LLM": {
+      "main": [
+        [
+          {
+            "node": "IF: дата бана получена?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: дата бана получена?": {
+      "main": [
+        [
+          {
+            "node": "HTTP: обновляем banned_until",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP: снимаем бан (нет даты)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: обновляем banned_until": {
+      "main": [
+        [
+          {
+            "node": "Loop: аккаунты",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: снимаем бан (нет даты)": {
+      "main": [
+        [
+          {
+            "node": "Loop: аккаунты",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain: парсим дату бана",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: GET /accounts": {
+      "main": [
+        [
+          {
+            "node": "Loop: аккаунты",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveManualExecutions": true
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "444215da-bb6a-4e9e-b6b5-c9b94d45acbc",
+  "activeVersionId": "444215da-bb6a-4e9e-b6b5-c9b94d45acbc",
+  "versionCounter": 80,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-07-11T15:17:50.943Z",
+      "createdAt": "2026-07-11T15:17:50.943Z",
+      "role": "workflow:owner",
+      "workflowId": "bOatLaOvMa92Kpef",
+      "projectId": "FuB2P81JUmVyRc9b",
+      "project": {
+        "updatedAt": "2026-07-10T11:52:37.043Z",
+        "createdAt": "2026-07-10T11:51:07.140Z",
+        "id": "FuB2P81JUmVyRc9b",
+        "name": "Anna Anna@gmail.com <anna@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      }
+    }
+  ],
+  "tags": [
+    {
+      "updatedAt": "2026-07-10T11:52:53.636Z",
+      "createdAt": "2026-07-10T11:52:53.636Z",
+      "id": "UEdNW1SrBJ1c8dzY",
+      "name": "AnastyMEETING"
+    }
+  ],
+  "activeVersion": {
+    "updatedAt": "2026-08-14T11:48:57.000Z",
+    "createdAt": "2026-08-14T11:48:56.686Z",
+    "versionId": "444215da-bb6a-4e9e-b6b5-c9b94d45acbc",
+    "workflowId": "bOatLaOvMa92Kpef",
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "manual-trigger-01",
+        "name": "Manual Trigger",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          -720,
+          -224
+        ]
+      },
+      {
+        "parameters": {
+          "url": "http://127.0.0.1:8000/accounts",
+          "options": {}
+        },
+        "id": "get-accounts-01",
+        "name": "HTTP: GET /accounts",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -272,
+          240
+        ]
+      },
+      {
+        "parameters": {
+          "batchSize": 1,
+          "options": {}
+        },
+        "id": "loop-accounts-01",
+        "name": "Loop: аккаунты",
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 2,
+        "position": [
+          0,
+          240
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://127.0.0.1:8000/send",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "account_id",
+                "value": "={{ $('Loop: аккаунты').item.json.account_id }}"
+              },
+              {
+                "name": "chat_id",
+                "value": "178220800"
+              },
+              {
+                "name": "text",
+                "value": "/start"
+              },
+              {
+                "name": "instant",
+                "value": "true"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "spambot-send-01",
+        "name": "HTTP: /start → SpamBot",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          240,
+          240
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "amount": 2
+        },
+        "id": "wait-5s-01",
+        "name": "Wait: 5 сек",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          480,
+          240
+        ],
+        "webhookId": "b9e2f4a1-7c3d-4e8f-a0b2-5d9c1e3f6a8b"
+      },
+      {
+        "parameters": {
+          "url": "=http://127.0.0.1:8000/accounts/{{ $('Loop: аккаунты').item.json.account_id }}/dialogs/178220800/messages",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "limit",
+                "value": "1"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "spambot-read-01",
+        "name": "HTTP: читаем ответ SpamBot",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          720,
+          240
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const account_id = $('Loop: аккаунты').item.json.account_id;\nconst raw = $input.first().json;\n// API возвращает массив [{id, text, out, date, read}]\nconst msg = Array.isArray(raw) ? (raw[0] || {}) : (raw || {});\n// Берём входящее сообщение (out=false) от SpamBot\nconst text = (msg.out === false && msg.text) ? msg.text : '';\nreturn [{ json: { account_id, text } }];"
+        },
+        "id": "extract-text-01",
+        "name": "Code: извлекаем текст",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          960,
+          240
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Извлеки дату окончания спам-бана из сообщения Telegram SpamBot. Верни ТОЛЬКО валидный JSON без markdown и пояснений: {\"banned_until\": \"<ISO 8601 UTC datetime>\", \"parsed\": true} если дата найдена, или {\"banned_until\": null, \"parsed\": false} если нет.\n\nСообщение SpamBot: {{ $json.text || 'пусто' }}",
+          "batching": {}
+        },
+        "id": "llm-chain-01",
+        "name": "Basic LLM Chain: парсим дату бана",
+        "type": "@n8n/n8n-nodes-langchain.chainLlm",
+        "typeVersion": 1.9,
+        "position": [
+          1168,
+          240
+        ],
+        "retryOnFail": true,
+        "waitBetweenTries": 5000
+      },
+      {
+        "parameters": {
+          "jsCode": "const account_id = $('Code: извлекаем текст').item.json.account_id;\nconst raw = $input.first().json.text || $input.first().json.output || '';\ntry {\n  const cleaned = raw.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  const result = JSON.parse(cleaned);\n  const banned_until = result.banned_until || null;\n  return [{ json: { account_id, banned_until, parsed: !!banned_until } }];\n} catch (e) {\n  return [{ json: { account_id, banned_until: null, parsed: false, raw_text: raw.slice(0, 200) } }];\n}"
+        },
+        "id": "normalize-llm-01",
+        "name": "Code: нормализуем ответ LLM",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1440,
+          240
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "cond-parsed-01",
+                "leftValue": "={{ $json.parsed }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "if-date-01",
+        "name": "IF: дата бана получена?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1680,
+          240
+        ]
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "=http://127.0.0.1:8000/accounts/{{ $json.account_id }}/spam_ban",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ banned_until: $json.banned_until }) }}",
+          "options": {}
+        },
+        "id": "update-ban-01",
+        "name": "HTTP: обновляем banned_until",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2144,
+          304
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "=http://127.0.0.1:8000/accounts/{{ $json.account_id }}/spam_ban",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"banned_until\": null}",
+          "options": {}
+        },
+        "id": "clear-ban-01",
+        "name": "HTTP: снимаем бан (нет даты)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1920,
+          400
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "model": "deepseek-v4-flash",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+        "typeVersion": 1,
+        "position": [
+          1104,
+          448
+        ],
+        "id": "73567a95-2fc3-4a2d-ab46-f53f3ffd703d",
+        "name": "DeepSeek Chat Model",
+        "credentials": {
+          "deepSeekApi": {
+            "id": "YRNER6ASeGb1i8yE",
+            "name": "DeepSeek account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.3,
+        "position": [
+          -688,
+          240
+        ],
+        "id": "68b9dc13-1698-41f1-b21b-8099a1a1ab71",
+        "name": "Schedule Trigger"
+      }
+    ],
+    "connections": {
+      "Manual Trigger": {
+        "main": [
+          []
+        ]
+      },
+      "Loop: аккаунты": {
+        "main": [
+          [
+            {
+              "node": "HTTP: /start → SpamBot",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP: /start → SpamBot": {
+        "main": [
+          [
+            {
+              "node": "Wait: 5 сек",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait: 5 сек": {
+        "main": [
+          [
+            {
+              "node": "HTTP: читаем ответ SpamBot",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP: читаем ответ SpamBot": {
+        "main": [
+          [
+            {
+              "node": "Code: извлекаем текст",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code: извлекаем текст": {
+        "main": [
+          [
+            {
+              "node": "Basic LLM Chain: парсим дату бана",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Basic LLM Chain: парсим дату бана": {
+        "main": [
+          [
+            {
+              "node": "Code: нормализуем ответ LLM",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code: нормализуем ответ LLM": {
+        "main": [
+          [
+            {
+              "node": "IF: дата бана получена?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF: дата бана получена?": {
+        "main": [
+          [
+            {
+              "node": "HTTP: обновляем banned_until",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "HTTP: снимаем бан (нет даты)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP: обновляем banned_until": {
+        "main": [
+          [
+            {
+              "node": "Loop: аккаунты",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP: снимаем бан (нет даты)": {
+        "main": [
+          [
+            {
+              "node": "Loop: аккаунты",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "DeepSeek Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Basic LLM Chain: парсим дату бана",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP: GET /accounts": {
+        "main": [
+          [
+            {
+              "node": "Loop: аккаунты",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Schedule Trigger": {
+        "main": [
+          []
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Anna Anna@gmail.com",
+    "name": "Version 444215da",
+    "description": "",
+    "autosaved": true,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-08-14T11:48:57.940Z",
+        "id": 790,
+        "workflowId": "bOatLaOvMa92Kpef",
+        "versionId": "444215da-bb6a-4e9e-b6b5-c9b94d45acbc",
+        "event": "activated",
+        "userId": "7d55f4d4-938d-461a-a5ef-36e53d5f0deb"
+      }
+    ]
+  }
+}
