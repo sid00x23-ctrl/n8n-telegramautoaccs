@@ -38,6 +38,12 @@ export N8N_EDITOR_BASE_URL="http://localhost:${N8N_PORT}"
 export N8N_DIAGNOSTICS_ENABLED=false
 export N8N_VERSION_NOTIFICATIONS_ENABLED=false
 
+# Patch: disable n8n attribution in Telegram nodes by default
+N8N_TELEGRAM_GF="$(dirname "$(command -v n8n)")/../lib/node_modules/n8n/node_modules/n8n-nodes-base/dist/nodes/Telegram/GenericFunctions.js"
+if [ -f "$N8N_TELEGRAM_GF" ]; then
+  sed -i 's/additionalFields.appendAttribution = true/additionalFields.appendAttribution = false/' "$N8N_TELEGRAM_GF"
+fi
+
 # Allow HTTP requests to localhost from workflows
 export N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES=false
 export NODES_INCLUDE=
